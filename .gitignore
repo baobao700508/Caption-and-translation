@@ -29,3 +29,24 @@ id_rsa*
 *secret*
 *token*
 service-account*.json
+
+# LiveCaption 本机构建、验证与完整迁移资料
+.build*/
+.tools/
+.venv*/
+dist/
+Releases/
+Vendor/
+TestResults/
+*.xcuserstate
+.DS_Store
+*.local.json
+*.wav
+*.pcm
+
+.diagnostic-venv/
+.firecrawl/
+Experiments/*
+!Experiments/RealtimeTransports/
+Experiments/RealtimeTransports/.*
+Experiments/RealtimeTransports/__pycache__/

@@ -77,12 +77,20 @@
 
 ```
 Caption and translation/
-├── README.md         # 项目定位与迁移准备范围
-├── AGENTS.md         # 项目 Agent 开发指引
-├── .claude/rules/    # Claude 通用语言规范
-├── .codex/rules/     # Codex 通用语言规范
-└── .gitignore        # 本机配置、凭据与生成文件排除规则
+├── Sources/          # 原生应用、字幕领域逻辑与音频桥接
+├── Tests/            # 可执行核心检查与测量脚本检查
+├── Resources/        # 应用元信息、配置样例与许可证
+├── scripts/          # 依赖准备、构建、发布与验证入口
+├── Documentation/    # 架构、日志契约与工程约定
+├── Experiments/      # 传输研究代码；历史工作副本仅本机保留
+├── TestResults/      # 本机测试证据与录音，不进入公开仓库
+├── Vendor/           # 本机第三方依赖，不进入公开仓库
+├── Releases/         # 本机发布记录与历史包，不进入公开仓库
+├── dist/             # 唯一正式应用包，不进入公开仓库
+└── Package.swift     # Swift Package 目标与依赖
 ```
+
+本项目的现有功能约束、术语及验证约定见 [工程约定](Documentation/工程约定.md)。重构必须保持现有运行逻辑、参数、错误处理、日志和界面表现；该文档随源码核对。
 
 ### 3.2 其他微观条目（由用户口头触发添加）
 
