@@ -23,6 +23,12 @@ import LiveCaptionCore
             // Interactive verification uses LIVECAPTION_MODEL_HOME for isolation.
             session.verificationInProgress=true;session.config=Configuration();session.configurationReady=false
             session.showSettings(.session)
+        } else if let index=args.firstIndex(of:"--verify-audio-routing"),args.count>index+1 {
+            session.verificationInProgress=true
+            Task {
+                await AudioRoutingSmoke.run(output:args[index+1],session:session)
+                if args.contains("--verification-exit") { NSApp.terminate(nil) }
+            }
         } else if let index = args.firstIndex(of:"--verify-caption-reflow"),args.count>index+3 {
             session.overlay?.hide()
             Task {

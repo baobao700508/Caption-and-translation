@@ -68,8 +68,7 @@ struct PreferencesView: View {
     }
     private func audioBinding(_ keyPath:WritableKeyPath<Configuration,Bool>) -> Binding<Bool> {
         Binding(get:{session.config[keyPath:keyPath]},set:{ value in
-            session.config[keyPath:keyPath] = value
-            Task { await session.changeInput() }
+            session.setAudioOption(keyPath,value)
         })
     }
     private var sessionSettings:some View {

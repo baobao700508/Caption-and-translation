@@ -46,6 +46,29 @@ extension PipelineChecks {
         }()))
         XCTAssertEqual(restored.captionReflow.sat,c);try restored.captionReflow.validate()
     }
+    func testSaTLongLowConfidenceKeepsReadableLinkedParagraphs() async throws {
+        let source=String(repeating:"A complete explanation with an explicit translation link. ",count:12)
+        let translation=String(repeating:"这是一段有明确原译文关联的完整说明。",count:10)
+        let first=CaptionReflowInput(source:source,translation:translation)
+        let input=CaptionReflowInput(source:source+source,translation:translation+translation,
+            providerBoundaries:[[first.source.count,first.translation.count]])
+        let infer:SaTCaptionReflow.Infer = { request,c in
+            let data=try JSONSerialization.jsonObject(with:request) as! [String:Any]
+            let source=data["source"] as! [String],target=data["translation"] as! [String]
+            return try JSONSerialization.data(withJSONObject:["version":1,"model":c.model,
+                "source":source.indices.map { ["end":$0+1,"probability":0.2] as [String:Any] },
+                "translation":target.indices.map { ["end":$0+1,"probability":0.1] as [String:Any] }])
+        }
+        let c=SaTReflowConfiguration()
+        let response=try await SaTCaptionReflow.complete(input,configuration:c,infer:infer)
+        let rows=try input.render(response,id:"readable")
+        XCTAssertEqual(rows.count,2)
+        XCTAssertEqual(rows.first?.source,source);XCTAssertEqual(rows.first?.translation,translation)
+        XCTAssertEqual(rows.map(\.source).joined(),source+source)
+        let noLink=CaptionReflowInput(source:source+source,translation:translation+translation)
+        let unchanged=try await SaTCaptionReflow.complete(noLink,configuration:c,infer:infer)
+        XCTAssertEqual(try noLink.render(unchanged,id:"unlinked").count,1)
+    }
     @MainActor func testSaTAllFourRoutesDraftFinalAndRevision() async throws {
         for route in ["google","whisperKit","text","speech"] {
             let gate=SaTGate(),coordinator=CaptionReflowCoordinator(debounce:0,minimumInterval:0) { input,_ in try await gate.call(input) }

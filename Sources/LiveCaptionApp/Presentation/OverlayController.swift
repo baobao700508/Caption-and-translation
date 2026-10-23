@@ -20,7 +20,9 @@ import LiveCaptionCore
         panel.collectionBehavior = [.canJoinAllSpaces,.fullScreenAuxiliary,.stationary]
         panel.isMovableByWindowBackground = true; panel.hidesOnDeactivate = false
         panel.minSize = NSSize(width:560,height:140)
-        panel.contentView = NSHostingView(rootView:OverlayRootView(session:session))
+        let hosting=NSHostingView(rootView:OverlayRootView(session:session))
+        hosting.sizingOptions=[]
+        panel.contentView=hosting
         passthroughControls = NSPanel(contentRect:NSRect(x:0,y:0,width:430,height:40),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
         passthroughControls.title = "LiveCaption 字幕控制"
         passthroughControls.level = NSWindow.Level(rawValue:NSWindow.Level.floating.rawValue+1)
@@ -38,7 +40,7 @@ import LiveCaptionCore
         let screen = panel.screen ?? NSScreen.main
         guard let bounds = screen?.visibleFrame else { return }
         var frame = panel.frame
-        frame.size.width = min(frame.width,bounds.width-24); frame.size.height = min(frame.height,bounds.height-24)
+        frame.size.width = min(max(frame.width,panel.minSize.width),bounds.width-24); frame.size.height = min(max(frame.height,panel.minSize.height),bounds.height-24)
         frame.origin.x = min(max(bounds.minX+12,frame.minX),bounds.maxX-frame.width-12)
         frame.origin.y = min(max(bounds.minY+12,frame.minY),bounds.maxY-frame.height-12)
         panel.setFrame(frame,display:true)
@@ -83,6 +85,9 @@ import LiveCaptionCore
         let size = panel.frame.size
         panel.setFrameOrigin(NSPoint(x:screen.visibleFrame.midX-size.width/2,y:screen.visibleFrame.minY+60))
         if session?.presentation != .compact { expandedFrame = panel.frame }
+    }
+    func windowWillResize(_ sender:NSWindow,to size:NSSize)->NSSize {
+        NSSize(width:max(size.width,sender.minSize.width),height:max(size.height,sender.minSize.height))
     }
     func windowDidResize(_ notification:Notification) { rememberExpandedFrame() }
     func windowDidMove(_ notification:Notification) { rememberExpandedFrame() }

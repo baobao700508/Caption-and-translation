@@ -236,6 +236,8 @@ LIVECAPTION_SAT_TEST_PYTHON="$HOME/Library/Application Support/LiveCaption/SaT/r
 LIVECAPTION_APP_PATH="$PWD/TestResults/dev/LiveCaption.app" bash scripts/build.sh
 ```
 
+App 中的音源、模式及其他选择保存在本机偏好中，启动和开始记录时保留这些选择；设置里的“重新读取”或“选择配置”会主动导入 JSON，并保存为后续启动使用的偏好。
+
 工具链默认使用 `xcode-select -p`；可通过 `LIVECAPTION_DEVELOPER_DIR` 指定工具链目录，通过 `LIVECAPTION_BUILD_PATH` 指定独立构建缓存。
 
 应用图标源文件为 `Resources/LiveCaption.svg`。构建时使用 macOS 原生工具自动生成 16～1024 像素的 `.icns`，不需要额外图像库；菜单栏仍使用适应系统外观的单色状态图标。
@@ -255,6 +257,12 @@ bash scripts/verify-human-app.sh transcribe /absolute/path/test-config.json
 ```
 
 这些命令必须显式传入测试配置，才会调用其中的云服务；不默认读取桌面配置。验证包在临时目录构建，不更新桌面正式版。结果和实际上传音频保存在本机 `TestResults/`。公开样本来自 [OpenSLR LibriSpeech](https://www.openslr.org/12/)，按 CC BY 4.0 保留参考文本、来源和 PCM 哈希；干净单人朗读不代替真实课堂、远场噪声或多人验收。文件输入、实际硬件采集、物理播放、文字到达和音频到达属于不同证据范围，不能混称完成了端到端延迟验证。
+
+音源切换与音频设备通知可单独验证，不读取云配置、不调用模型；它会实际打开麦克风和电脑音频采集：
+
+```bash
+/path/to/LiveCaption.app/Contents/MacOS/LiveCaption --verify-audio-routing /absolute/path/result.json --verification-exit
+```
 
 `Experiments/RealtimeTransports/` 及 `LiveCaptionVerify` 包含额外传输研究入口，部分需要未随仓库发布的 AOQ SDK；不自动用于正常录音。正常 App、核心检查和原生文件验证不依赖 AOQ 实验 SDK。
 

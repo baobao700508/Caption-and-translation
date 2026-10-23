@@ -78,14 +78,21 @@ import LiveCaptionCore
                 info["microphone_agc"] = microphoneUsesNative
             }
             try selectAudioDevice(uid:config.outputDeviceUID,input:false,node:engine.outputNode)
-            engine.prepare(); try engine.start()
             if config.systemAudioEnabled {
                 let capture = SystemCapture(ring: systemRing); system = capture
                 let roots = NSRunningApplication.runningApplications(withBundleIdentifier:config.applicationBundleID).map(\.processIdentifier)
                 try await capture.start(bundleID: config.applicationBundleID, onlyPID: onlySystemPID, rootPIDs:roots)
             }
+            // Creating a process tap/aggregate device changes the hardware graph.
+            // Establish it before starting AVAudioEngine, otherwise its own setup
+            // notification stops the just-started engine and triggers a rebuild loop.
+            engine.prepare(); try engine.start()
             return info
         } catch { await stop(); throw error }
+    }
+    func resumeEngineAfterRouteChange() throws {
+        guard !engine.isRunning else { return }
+        engine.prepare();try engine.start()
     }
     func play(_ data: Data, rate: Double) -> Bool {
         guard playbackEnabled else { return true }

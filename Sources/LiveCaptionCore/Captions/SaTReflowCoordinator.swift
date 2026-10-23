@@ -169,7 +169,7 @@ import Foundation
                     self.task=nil;self.pending=false;self.publish();self.schedule();return
                 }
                 self.fixed=proposed;self.scanned=job.snapshot;self.failedSnapshot=nil;self.task=nil;self.pending=false
-                self.status="已整理 · SaT \(c.sat.model)";self.publish()
+                self.status=proposed.isEmpty ? "SaT 已检查，等待合适段界":"已整理 · SaT \(c.sat.model)";self.publish()
                 self.onApplied?(job.ids,self.projection(),Date().timeIntervalSince(start));self.schedule()
             } catch {
                 guard let self,self.generation == token,!Task.isCancelled else { return }

@@ -14,10 +14,15 @@ import LiveCaptionCore
         let initialRun = session.running
         var results:[String:Bool] = [:]
         results.merge(await CaptionReflowControlSmoke.run(session:session)) { _,new in new }
+        results.merge(await SessionConfigurationSmoke.run()) { _,new in new }
         session.captionParagraphs=[]
         session.config=config
         session.showSubtitles()
         let fullFrame = session.overlay?.frame ?? .zero
+        if let window=NSApp.windows.first(where:{$0.title == "LiveCaption 字幕"}) {
+            let bounded=window.delegate?.windowWillResize?(window,to:NSSize(width:80,height:40)) ?? .zero
+            results["caption_resize_keeps_controls_reachable"] = bounded.width>=560 && bounded.height>=140
+        }
         results["expanded_visible"] = session.presentation == .expanded && session.overlay?.isVisible == true
         session.passthrough = true
         results["expanded_passthrough"] = session.overlay?.isInteractive == false
@@ -32,6 +37,13 @@ import LiveCaptionCore
         results["menu_bar_can_open"] = session.menuBar?.isShown == true
         session.showSettings(.appearance)
         results["settings_dismisses_menu_bar"] = session.menuBar?.isShown == false
+        if let window=NSApp.windows.first(where:{$0.title == "LiveCaption 设置"}) {
+            let bounded=window.delegate?.windowWillResize?(window,to:NSSize(width:80,height:40)) ?? .zero
+            results["settings_resize_keeps_controls_reachable"] = bounded.width>=740 && bounded.height>=540
+            var tiny=window.frame;tiny.size=NSSize(width:80,height:40);window.setFrame(tiny,display:true)
+            session.showSettings(.appearance)
+            results["settings_recovers_tiny_restored_frame"] = window.frame.width>=740 && window.frame.height>=540
+        }
         results["mini_opens_settings"] = session.preferencesWindow?.isVisible == true && session.settingsSection == .appearance
         session.menuBar?.showDetached()
         results["menu_controls_open_without_status_item_anchor"] = session.menuBar?.detachedIsVisible == true

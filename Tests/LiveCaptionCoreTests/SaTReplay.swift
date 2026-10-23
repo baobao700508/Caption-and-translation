@@ -47,7 +47,7 @@ import LiveCaptionCore
                 try await log.captionLayout(rows,providerGroupIDs:transcript.captionParagraphs(epoch:1).map(\.id),epoch:1,
                     model:config.captionReflow.activeModel,elapsed:Date().timeIntervalSince(started))
                 try await log.finish(tailIncomplete:false)
-                let valid=byteIdentical && unique && coordinator.status.hasPrefix("已整理")
+                let valid=byteIdentical && unique && (coordinator.status.hasPrefix("已整理") || coordinator.status.hasPrefix("SaT 已检查"))
                 results.append(["id":fixture.id,"route":fixture.route,"provenance":fixture.provenance,"success":valid,
                     "every_projection_byte_identical":byteIdentical,"every_projection_unique_ids":unique,"projection_count":samples,
                     "event_count":fixture.events.count,"provider_groups":transcript.captionParagraphs(epoch:1).count,

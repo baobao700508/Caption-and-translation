@@ -23,7 +23,7 @@ import LiveCaptionCore
     var preferencesWindow: PreferencesWindowController?
     var menuBar: MenuBarController?
     let localModels=LocalModelManager()
-    let aiRecords=AIRecordController()
+    let aiRecords:AIRecordController
     @Published var sourceText = "选择音源，开始会话记录"
     @Published var translatedText = ""
     @Published var captionParagraphs: [CaptionParagraph] = []
@@ -108,24 +108,31 @@ import LiveCaptionCore
     private var fileReplayProducer: Task<Void,Never>?
     private var logScopeURL: URL?
     private var routeObserver: NSObjectProtocol?
+    private var routeRecoveryTask:Task<Void,Never>?
+    private(set) var audioInputRestartCount=0
+    private(set) var audioEngineResumeCount=0
+    private var preferencesRevision:UInt64=0
+    private var hasRuntimePreferences=false
     private var sleepObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
     private var suspendTask: Task<Void,Never>?
     private var resumeWanted = false
-    init() {
-        let defaults = UserDefaults.standard
+    private let preferences:UserDefaults
+    init(defaults:UserDefaults = .standard,configurationURL:URL = Configuration.desktopURL) {
+        preferences=defaults
+        aiRecords=AIRecordController(defaults:defaults)
+        self.configurationURL=configurationURL
         if defaults.object(forKey:"caption-font-size") != nil { fontSize = min(44,max(16,defaults.double(forKey:"caption-font-size"))) }
         if defaults.object(forKey:"caption-opacity") != nil { overlayOpacity = min(1,max(0.45,defaults.double(forKey:"caption-opacity"))) }
         // Mouse passthrough deliberately starts off so the floating controls remain reachable.
-        if let saved = UserDefaults.standard.data(forKey: "runtime-settings"), let restored = try? Configuration.decode(saved) {
-            config = restored
+        if let saved = preferences.data(forKey: "runtime-settings"), let restored = try? Configuration.decode(saved) {
+            config = restored;hasRuntimePreferences=true
         }
-        routeObserver = NotificationCenter.default.addObserver(forName:.AVAudioEngineConfigurationChange,object:nil,queue:.main) { [weak self] notification in
-            Task { @MainActor in
-                guard let self, self.running, !self.busy, !self.stopping, !self.resumeWanted,
-                      let engine = notification.object as? AVAudioEngine, engine === self.hardware.engine, !engine.isRunning else { return }
-                await self.changeInput()
-            }
+        // AVAudioEngine posts from its internal serial queue. A main OperationQueue
+        // observer waits synchronously and deadlocks against engine teardown on main.
+        routeObserver = NotificationCenter.default.addObserver(forName:.AVAudioEngineConfigurationChange,object:nil,queue:nil) { [weak self] notification in
+            guard let engine=notification.object as? AVAudioEngine else { return }
+            Task { @MainActor [weak self] in self?.audioConfigurationChanged(engine) }
         }
         sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(forName:NSWorkspace.willSleepNotification,object:nil,queue:.main) { [weak self] _ in
             Task { @MainActor in self?.prepareForSleep() }
@@ -140,6 +147,7 @@ import LiveCaptionCore
 extension AppSession {
     private func prepareForSleep() {
         guard running && !stopping else { return }
+        routeRecoveryTask?.cancel();routeRecoveryTask=nil
         resumeWanted = true; busy = true; status = "休眠暂停"
         tailIncomplete = true
         rotationTask?.cancel(); recoveryTask?.cancel()
@@ -173,6 +181,7 @@ extension AppSession {
     func reloadConfiguration(preservePreferences: Bool = false) async {
         let requestID = UUID(); configurationRequestID = requestID
         let reflowRevisionAtLoad=reflowSettingsRevision
+        let preferencesRevisionAtLoad=preferencesRevision
         configurationLoading = true
         defer { if configurationRequestID == requestID { configurationLoading = false } }
         Task { [weak self] in
@@ -181,7 +190,7 @@ extension AppSession {
             self.errorMessage = "配置读取仍在等待系统响应；可点“选择配置…”重新授予文件访问。"
         }
         let fallback = configurationURL
-        let bookmark = verificationInProgress ? nil : UserDefaults.standard.data(forKey:"configuration-bookmark")
+        let bookmark = verificationInProgress ? nil : preferences.data(forKey:"configuration-bookmark")
         let useKeychain = !verificationInProgress
         let result = await Task.detached(priority: .userInitiated) { () -> Result<(Configuration, Date, URL), Error> in
             do {
@@ -199,23 +208,26 @@ extension AppSession {
         switch result {
         case .success(let (loaded,date,url)):
             configurationURL = url
-            let sameFile = (UserDefaults.standard.object(forKey: "last-config-date") as? Date) == date
             let currentReflow=config.captionReflow
-            if !preservePreferences || !sameFile { config = loaded }
+            // File dates also change when SaT/credentials save unrelated fields.
+            // Automatic startup refreshes credentials, preserving the user's UI choices.
+            // Only an explicit import/reload replaces already-saved preferences.
+            if (!preservePreferences || !hasRuntimePreferences) && preferencesRevision == preferencesRevisionAtLoad { config = loaded }
             if reflowSettingsRevision != reflowRevisionAtLoad { config.captionReflow=currentReflow }
             config.bailianAPIKey = loaded.bailianAPIKey
             config.apiKey = loaded.apiKey
-            if !verificationInProgress && UserDefaults.standard.integer(forKey:"caption-layout-control-version") < 1 {
+            if !verificationInProgress && preferences.integer(forKey:"caption-layout-control-version") < 1 {
                 if config.subtitleLayout == .source {
                     config.subtitleLayout = .bilingual
                     feedback = "已恢复译文显示；可在字幕顶部选择原文、译文或双语。"
                 }
-                UserDefaults.standard.set(1,forKey:"caption-layout-control-version"); savePreferences()
+                preferences.set(1,forKey:"caption-layout-control-version"); savePreferences()
             }
             fileDate = date
-            if !verificationInProgress { UserDefaults.standard.set(date,forKey:"last-config-date") }
+            if !verificationInProgress { preferences.set(date,forKey:"last-config-date") }
             errorMessage = nil
             configurationReady = true
+            savePreferences()
         case .failure:
             configurationReady = false; errorMessage = "配置无法读取；可用“选择配置”选取桌面 JSON 文件，授予文件访问权限。"
         }
@@ -224,7 +236,7 @@ extension AppSession {
         let panel = NSOpenPanel(); panel.canChooseFiles = true; panel.canChooseDirectories = false
         panel.message = "选择桌面 LiveCaption配置.json"; panel.directoryURL = Configuration.desktopURL.deletingLastPathComponent()
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        if let data = try? url.bookmarkData(options:.withSecurityScope,includingResourceValuesForKeys:nil,relativeTo:nil) { UserDefaults.standard.set(data,forKey:"configuration-bookmark") }
+        if let data = try? url.bookmarkData(options:.withSecurityScope,includingResourceValuesForKeys:nil,relativeTo:nil) { preferences.set(data,forKey:"configuration-bookmark") }
         configurationURL = url; await reloadConfiguration()
     }
     var selectedConfigurationURL: URL { configurationURL }
@@ -241,7 +253,7 @@ extension AppSession {
                 try encoder.encode(initial).write(to:url,options:.withoutOverwriting)
             }
             let bookmark=try url.bookmarkData(options:.withSecurityScope,includingResourceValuesForKeys:nil,relativeTo:nil)
-            if !verificationInProgress { UserDefaults.standard.set(bookmark,forKey:"configuration-bookmark") }
+            if !verificationInProgress { preferences.set(bookmark,forKey:"configuration-bookmark") }
             configurationURL=url
             await reloadConfiguration()
             showSettings(.models)
@@ -259,20 +271,21 @@ extension AppSession {
         guard saved else { errorMessage="钥匙串未能保存凭据，请检查系统授权后重试。";return }
         do {
             fileDate=try await reflowSettingsWriter.saveConnection(snapshot,url:configurationURL)
-            UserDefaults.standard.set(fileDate,forKey:"last-config-date")
+            preferences.set(fileDate,forKey:"last-config-date")
             savePreferences();feedback="服务凭据已保存到 macOS 钥匙串，其他选择已保存。"
         } catch { errorMessage="凭据已存钥匙串，但配置文件未能保存："+error.localizedDescription }
     }
     func preferencesChanged() { savePreferences() }
     private func saveAppearance() {
         guard !verificationInProgress else { return }
-        UserDefaults.standard.set(fontSize,forKey:"caption-font-size")
-        UserDefaults.standard.set(overlayOpacity,forKey:"caption-opacity")
+        preferences.set(fontSize,forKey:"caption-font-size")
+        preferences.set(overlayOpacity,forKey:"caption-opacity")
     }
     private func savePreferences() {
         guard !verificationInProgress else { return }
+        preferencesRevision += 1;hasRuntimePreferences=true
         var safe = config; safe.apiKey = ""; safe.bailianAPIKey = ""
-        if let data = try? JSONEncoder().encode(safe) { UserDefaults.standard.set(data, forKey: "runtime-settings") }
+        if let data = try? JSONEncoder().encode(safe) { preferences.set(data, forKey: "runtime-settings") }
     }
 }
 
@@ -293,7 +306,7 @@ extension AppSession {
             if persistSettings && config.provider != .whisperKit { let key = config.activeAPIKey; let provider = config.provider; await Task.detached { KeyStorage.save(key,provider:provider) }.value }
             if persistSettings { savePreferences() }
             let root = URL(fileURLWithPath:(config.logDirectory as NSString).expandingTildeInPath)
-            if let bookmark = UserDefaults.standard.data(forKey:"log-directory-bookmark") {
+            if let bookmark = preferences.data(forKey:"log-directory-bookmark") {
                 logScopeURL = await Task.detached {
                     var stale = false
                     guard let url = try? URL(resolvingBookmarkData:bookmark,options:.withSecurityScope,relativeTo:nil,bookmarkDataIsStale:&stale),
@@ -580,7 +593,7 @@ extension AppSession {
             catch {
                 guard revision == reflowSettingsRevision else { return }
                 if !verificationInProgress,let date=try? url.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate {
-                    fileDate=date;UserDefaults.standard.set(date,forKey:"last-config-date");savePreferences()
+                    fileDate=date;preferences.set(date,forKey:"last-config-date");savePreferences()
                 }
                 errorMessage="SaT 设置已生效，但自动保存失败："+config.redacted(error.localizedDescription)
             }
@@ -612,7 +625,7 @@ extension AppSession {
         let date=try await reflowSettingsWriter.save(value,revision:revision,url:url)
         guard revision == reflowSettingsRevision,let date else { return }
         fileDate=date
-        if !verificationInProgress { UserDefaults.standard.set(date,forKey:"last-config-date") }
+        if !verificationInProgress { preferences.set(date,forKey:"last-config-date") }
         savePreferences()
         feedback=value.enabled ? "后台整理已开启并保存。":"后台整理已关闭并保存；原文、译文与日志继续。"
         if running {
@@ -673,10 +686,43 @@ extension AppSession {
         hardware.playbackEnabled = config.pipeline == .translate && config.translationMode == .speech
         busy = false
     }
-    func changeInput() async {
-        savePreferences(); guard running && !busy else { return }
+    func setAudioOption(_ keyPath:WritableKeyPath<Configuration,Bool>,_ value:Bool) {
+        guard !busy,!stopping,config[keyPath:keyPath] != value else { return }
+        config[keyPath:keyPath]=value
+        savePreferences() // Persist synchronously, before another click can start a reload.
+        Task { await changeInput() }
+    }
+    private func audioConfigurationChanged(_ engine:AVAudioEngine) {
+        guard running,!busy,!stopping,!resumeWanted,engine === hardware.engine else { return }
+        routeRecoveryTask?.cancel()
+        routeRecoveryTask=Task { [weak self] in
+            do { try await Task.sleep(nanoseconds:500_000_000) } catch { return }
+            guard let self,!Task.isCancelled,self.running,!self.busy,!self.stopping,!self.resumeWanted,
+                  engine === self.hardware.engine else { return }
+            self.routeRecoveryTask=nil
+            let needsRestart = !engine.isRunning
+            if needsRestart {
+                do {
+                    // A route notification does not require recreating process taps.
+                    // Resume the existing graph first; rebuild only if its format is invalid.
+                    try self.hardware.resumeEngineAfterRouteChange()
+                    self.audioEngineResumeCount += 1
+                    try? await self.logger?.record("audio.route.settled",fields:["action":"resume_existing_engine",
+                        "engine_running":engine.isRunning,"resume_count":self.audioEngineResumeCount])
+                } catch { await self.changeInput(origin:"audio_route_format_changed") }
+            } else {
+                try? await self.logger?.record("audio.route.settled",fields:["action":"keep_running","engine_running":true])
+            }
+        }
+    }
+    func changeInput(origin:String="user") async {
+        if origin == "user" { savePreferences() }
+        guard running && !busy && !stopping else { return }
+        routeRecoveryTask?.cancel();routeRecoveryTask=nil
+        audioInputRestartCount += 1
         busy = true; frontend?.stop(); frontend = nil
         let packets = packetTask; packetTask = nil; packets?.cancel()
+        try? await logger?.record("audio.input_rebuild.started",fields:["origin":origin,"restart_count":audioInputRestartCount])
         await hardware.stop(); await packets?.value
         do { try await logger?.changeConfiguration(config, eventType: "input.changed"); try await logger?.record("gap", fields: ["message": "音源配置变化，重建采集；该时间段可能有缺口"]); try await startAudio() }
         catch { errorMessage = redacted(error.localizedDescription); await stop() }
@@ -753,6 +799,7 @@ extension AppSession {
 // MARK: - 收尾与日志入口
 extension AppSession {
     func stop() async {
+        routeRecoveryTask?.cancel();routeRecoveryTask=nil
         guard !stopping else { return }
         stopping = true; busy = true; status = "正在收尾"
         verificationFault?.cancel();verificationFault=nil
@@ -792,7 +839,7 @@ extension AppSession {
         let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
         config.logDirectory = url.path; savePreferences()
-        if let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) { UserDefaults.standard.set(bookmark, forKey: "log-directory-bookmark") }
+        if let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) { preferences.set(bookmark, forKey: "log-directory-bookmark") }
     }
     func copyCatchUpPrompt() {
         let root = currentDirectory?.deletingLastPathComponent().deletingLastPathComponent().path ?? config.logDirectory

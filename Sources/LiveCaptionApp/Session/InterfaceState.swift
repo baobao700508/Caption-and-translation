@@ -17,17 +17,28 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var icon: String { switch self { case .session: "waveform"; case .appearance: "textformat.size"; case .audio: "slider.horizontal.3"; case .models: "arrow.down.circle"; case .records: "folder" } }
 }
 
-@MainActor final class PreferencesWindowController {
+@MainActor final class PreferencesWindowController:NSObject,NSWindowDelegate {
     private let window: NSWindow
     init(session: AppSession) {
         window = NSWindow(contentRect:NSRect(x:0,y:0,width:820,height:620),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false)
         window.title = "LiveCaption 设置"; window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width:740,height:540)
-        window.contentView = NSHostingView(rootView:PreferencesView(session:session))
+        let hosting=NSHostingView(rootView:PreferencesView(session:session))
+        hosting.sizingOptions=[] // AppKit owns resizing; SwiftUI must not replace window limits.
+        window.contentView=hosting
+        super.init()
+        window.delegate=self
+        window.contentMinSize=NSSize(width:740,height:540)
         window.setFrameAutosaveName("LiveCaptionPreferences")
         if !window.setFrameUsingName("LiveCaptionPreferences") { window.center() }
     }
+    func windowWillResize(_ sender:NSWindow,to size:NSSize)->NSSize {
+        NSSize(width:max(size.width,sender.minSize.width),height:max(size.height,sender.minSize.height))
+    }
     func show() {
+        let minimum=window.minSize
+        if window.frame.width<minimum.width || window.frame.height<minimum.height {
+            var frame=window.frame;frame.size=windowWillResize(window,to:frame.size);window.setFrame(frame,display:true)
+        }
         if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(window.frame) }) { window.center() }
         if window.isMiniaturized { window.deminiaturize(nil) }
         NSApp.activate(ignoringOtherApps:true); window.makeKeyAndOrderFront(nil)
