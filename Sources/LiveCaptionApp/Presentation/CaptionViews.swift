@@ -159,8 +159,8 @@ struct OverlayRootView: View {
     @ObservedObject var session: AppSession
     var body: some View {
         Group {
-            if session.presentation == .compact { MiniCaptionView(session:session) }
-            else { CaptionView(session:session) }
+            if session.presentation == .compact { MiniCaptionView(session:session).frame(minWidth:510,minHeight:64) }
+            else { CaptionView(session:session).frame(minWidth:560,minHeight:140) }
         }.environment(\.controlActiveState,.active)
     }
 }

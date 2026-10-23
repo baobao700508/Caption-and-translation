@@ -21,7 +21,8 @@ import LiveCaptionCore
         panel.isMovableByWindowBackground = true; panel.hidesOnDeactivate = false
         panel.minSize = NSSize(width:560,height:140)
         let hosting=NSHostingView(rootView:OverlayRootView(session:session))
-        hosting.sizingOptions=[]
+        // 由根视图同步各显示状态的最小尺寸，避免异步布局把窗口下限清零。
+        hosting.sizingOptions=[.minSize]
         panel.contentView=hosting
         passthroughControls = NSPanel(contentRect:NSRect(x:0,y:0,width:430,height:40),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
         passthroughControls.title = "LiveCaption 字幕控制"

@@ -18,10 +18,15 @@ import LiveCaptionCore
         session.captionParagraphs=[]
         session.config=config
         session.showSubtitles()
+        try? await Task.sleep(nanoseconds:100_000_000)
         let fullFrame = session.overlay?.frame ?? .zero
         if let window=NSApp.windows.first(where:{$0.title == "LiveCaption 字幕"}) {
             let bounded=window.delegate?.windowWillResize?(window,to:NSSize(width:80,height:40)) ?? .zero
             results["caption_resize_keeps_controls_reachable"] = bounded.width>=560 && bounded.height>=140
+            var tiny=window.frame;tiny.size=NSSize(width:80,height:40);window.setFrame(tiny,display:true)
+            try? await Task.sleep(nanoseconds:100_000_000)
+            results["caption_actual_resize_keeps_controls_reachable"] = window.frame.width>=560 && window.frame.height>=140
+            window.setFrame(fullFrame,display:true)
         }
         results["expanded_visible"] = session.presentation == .expanded && session.overlay?.isVisible == true
         session.passthrough = true
@@ -32,6 +37,19 @@ import LiveCaptionCore
         results["mini_hides_auxiliary_controls"] = session.overlay?.passthroughControlsVisible == false
         results["mini_is_smaller"] = (session.overlay?.frame.height ?? 0) < fullFrame.height
         try? await Task.sleep(nanoseconds:300_000_000)
+        if let window=NSApp.windows.first(where:{$0.title == "LiveCaption 字幕"}) {
+            results["mini_retains_its_own_minimum"] = window.minSize.width == 510 && window.minSize.height == 64 && window.frame.size == NSSize(width:510,height:64)
+            session.showSubtitles()
+            try? await Task.sleep(nanoseconds:100_000_000)
+            let bounded=window.delegate?.windowWillResize?(window,to:NSSize(width:80,height:40)) ?? .zero
+            results["expanded_minimum_survives_mini_transition"] = bounded.width>=560 && bounded.height>=140
+            var tiny=window.frame;tiny.size=NSSize(width:80,height:40);window.setFrame(tiny,display:true)
+            try? await Task.sleep(nanoseconds:100_000_000)
+            results["expanded_actual_resize_survives_mini_transition"] = window.frame.width>=560 && window.frame.height>=140
+            window.setFrame(fullFrame,display:true)
+            session.collapseSubtitles()
+            try? await Task.sleep(nanoseconds:100_000_000)
+        }
         session.menuBar?.show()
         try? await Task.sleep(nanoseconds:100_000_000)
         results["menu_bar_can_open"] = session.menuBar?.isShown == true
