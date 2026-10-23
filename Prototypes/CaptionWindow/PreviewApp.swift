@@ -9,6 +9,8 @@ import SwiftUI
     private let session = DemoSession()
     private var gallery: NSWindow?
     private var panels: [Proposal: NSPanel] = [:]
+    private var settingsWindow: NSWindow?
+    private var controlsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let index = CommandLine.arguments.firstIndex(of: "--render-only"), CommandLine.arguments.count > index + 1 {
@@ -16,6 +18,8 @@ import SwiftUI
             catch { fputs("预览导出失败：\(error)\n", stderr); exit(1) }
             return
         }
+        session.openSettings = { [weak self] in self?.showSettings() }
+        session.openControls = { [weak self] in self?.showControls() }
         createMenu()
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: min(820, screen.height - 50)),
@@ -47,10 +51,36 @@ import SwiftUI
         panels[proposal] = panel; panel.makeKeyAndOrderFront(nil)
     }
 
+    private func showSettings() {
+        controlsWindow?.orderOut(nil)
+        if let window = settingsWindow { window.makeKeyAndOrderFront(nil); return }
+        let window = makeUtilityWindow(title: "字幕设置 · 原型", view: ProposalSettings(session: session), size: NSSize(width: 440, height: 550))
+        settingsWindow = window
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func showControls() {
+        if let window = controlsWindow { window.makeKeyAndOrderFront(nil); return }
+        let window = makeUtilityWindow(title: "菜单栏控制面板 · 原型", view: ProposalQuickControls(session: session), size: NSSize(width: 380, height: 265))
+        controlsWindow = window
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func makeUtilityWindow<V: View>(title: String, view: V, size: NSSize) -> NSWindow {
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = title; window.isReleasedWhenClosed = false
+        window.level = .floating
+        window.contentView = NSHostingView(rootView: view)
+        window.center()
+        return window
+    }
+
     private func createMenu() {
         let menu = NSMenu()
         let appItem = NSMenuItem(); let appMenu = NSMenu()
         let quit = NSMenuItem(title: "退出字幕原型", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let settings = NSMenuItem(title: "设置…", action: #selector(openSettingsMenu), keyEquivalent: ",")
+        settings.target = self; appMenu.addItem(settings); appMenu.addItem(.separator())
         appMenu.addItem(quit); appItem.submenu = appMenu; menu.addItem(appItem)
         let preview = NSMenuItem(); let options = NSMenu(title: "预览")
         for (i, proposal) in Proposal.allCases.enumerated() {
@@ -59,6 +89,7 @@ import SwiftUI
         }
         preview.submenu = options; menu.addItem(preview); NSApp.mainMenu = menu
     }
+    @objc private func openSettingsMenu() { showSettings() }
     @objc private func openMenu(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let proposal = Proposal(rawValue: raw) else { return }
         show(proposal)
@@ -85,6 +116,8 @@ import SwiftUI
             try png.write(to: directory.appendingPathComponent(name + ".png"))
             window.orderOut(nil)
         }
+        try save(ProposalSettings(session: session), name: "settings", width: 440, height: 550)
+        try save(ProposalQuickControls(session: session), name: "menu-controls", width: 380, height: 265)
         for proposal in Proposal.allCases {
             try save(CaptionProposal(proposal: proposal, session: session), name: proposal.rawValue, width: 820, height: 180)
         }

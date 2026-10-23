@@ -12,7 +12,7 @@ enum Proposal: String, CaseIterable, Identifiable {
         switch self {
         case .a: return "保留熟悉的操作位置，底栏全部收起"
         case .b: return "上下不留工具栏，操作移到右侧"
-        case .c: return "平时只看字幕，悬停或右键呼出操作"
+        case .c: return "常驻一个设置入口，其余操作悬停呼出"
         }
     }
     var metric: String {
@@ -40,6 +40,9 @@ struct DemoParagraph: Identifiable {
     @Published var layout: TextLayout = .bilingual
     @Published var scene: SampleScene = .lecture
     @Published var fontSize: Double = 22
+    @Published var overlayOpacity: Double = 0.94
+    var openSettings: () -> Void = {}
+    var openControls: () -> Void = {}
     @Published var running = true
     @Published var latestOnly = false
     @Published var stream = false
@@ -153,6 +156,9 @@ private struct CaptionMenuItems: View {
         Button("减小字号") { session.changeFont(-1) }
         Toggle("只看最新一段", isOn: $session.latestOnly)
         Button("复制当前译文") { session.copyTranslation() }.disabled(session.paragraphs.isEmpty)
+        Divider()
+        Button("打开设置…", action: session.openSettings)
+        Button("打开菜单栏控制面板…", action: session.openControls)
         Divider()
         Button(session.actionTitle, action: recordingAction)
         if let onClose { Divider(); Button("关闭此预览", action: onClose) }
@@ -270,6 +276,7 @@ struct CaptionProposal: View {
                         Spacer()
                         Text("12:36").font(.system(size: 10).monospacedDigit()).foregroundStyle(CaptionStyle.secondary)
                         CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol, action: requestRecordingAction)
+                        CaptionIcon(title: "打开设置", symbol: "gearshape", action: session.openSettings)
                         CaptionMore(session: session, onClose: onClose, recordingAction: requestRecordingAction)
                     }.padding(.leading, 16).padding(.trailing, 6).frame(height: 28)
                     Rectangle().fill(.white.opacity(0.07)).frame(height: 0.5)
@@ -283,6 +290,7 @@ struct CaptionProposal: View {
                         Capsule().fill(.white.opacity(0.16)).frame(width: 12, height: 2).padding(.top, 12)
                         Spacer(minLength: 4)
                         CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol, action: requestRecordingAction)
+                        CaptionIcon(title: "打开设置", symbol: "gearshape", action: session.openSettings)
                         CaptionMore(session: session, onClose: onClose, recordingAction: requestRecordingAction)
                         Spacer(minLength: 4)
                         Circle().fill(session.statusColor).frame(width: 5, height: 5).padding(.bottom, 14)
@@ -295,18 +303,20 @@ struct CaptionProposal: View {
                     }
                     .overlay(alignment: .trailing) {
                         VStack(spacing: 5) {
-                            CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol, action: requestRecordingAction)
-                            CaptionMore(session: session, onClose: onClose, recordingAction: requestRecordingAction)
-                        }.padding(3).background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 9))
-                            .padding(.trailing, 6).opacity(reveal ? 1 : 0)
-                            .allowsHitTesting(reveal).accessibilityHidden(!reveal)
+                            VStack(spacing: 5) {
+                                CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol, action: requestRecordingAction)
+                                CaptionMore(session: session, onClose: onClose, recordingAction: requestRecordingAction)
+                            }.opacity(reveal ? 1 : 0).allowsHitTesting(reveal).accessibilityHidden(!reveal)
+                            CaptionIcon(title: "打开设置", symbol: "gearshape", action: session.openSettings)
+                        }.padding(3).background(.white.opacity(reveal ? 0.055 : 0), in: RoundedRectangle(cornerRadius: 9))
+                            .padding(.trailing, 6)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { withAnimation(.easeOut(duration: 0.15)) { hovering = true } }
                     .onHover { entered in withAnimation(.easeOut(duration: 0.15)) { hovering = entered } }
             }
         }
-        .background(CaptionStyle.background, in: RoundedRectangle(cornerRadius: 11))
+        .background(CaptionStyle.background.opacity(session.overlayOpacity), in: RoundedRectangle(cornerRadius: 11))
         .overlay(RoundedRectangle(cornerRadius: 11).stroke(CaptionStyle.border, lineWidth: 0.7))
         .clipShape(RoundedRectangle(cornerRadius: 11))
         .contextMenu { CaptionMenuItems(session: session, onClose: onClose, recordingAction: requestRecordingAction) }
@@ -385,5 +395,71 @@ struct ProposalGallery: View {
             }
         }.padding(20).frame(minWidth: 860).background(Color(nsColor: .windowBackgroundColor))
             .preferredColorScheme(.light)
+    }
+}
+
+struct ProposalSettings: View {
+    @ObservedObject var session: DemoSession
+    var body: some View {
+        Form {
+            Section("字幕外观") {
+                Picker("字幕内容", selection: $session.layout) {
+                    ForEach(TextLayout.allCases) { Text($0.rawValue).tag($0) }
+                }
+                LabeledContent("字号", value: "\(Int(session.fontSize)) pt")
+                Slider(value: $session.fontSize, in: 16...32, step: 1).accessibilityLabel("字幕字号")
+                LabeledContent("背景不透明度", value: "\(Int((session.overlayOpacity * 100).rounded()))%")
+                Slider(value: $session.overlayOpacity, in: 0.45...1).accessibilityLabel("字幕背景不透明度")
+                Text("数值越低，背景越透明；文字保持清晰。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("预览") {
+                Text("字幕预览 · 今天我们将讨论储能。")
+                    .font(.system(size: session.fontSize)).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                    .background(CaptionStyle.background.opacity(session.overlayOpacity), in: RoundedRectangle(cornerRadius: 10))
+            }
+            Section {
+                Button("打开菜单栏控制面板…", action: session.openControls)
+                Text("仅调整三版原型，不读取或修改正式应用设置。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }.formStyle(.grouped).padding(8).frame(width: 440, height: 550).preferredColorScheme(.light)
+    }
+}
+
+struct ProposalQuickControls: View {
+    @ObservedObject var session: DemoSession
+    @State private var showingStopConfirmation = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("菜单栏控制面板", systemImage: "captions.bubble.fill").font(.headline)
+                Spacer()
+                Button(action: session.openSettings) { Image(systemName: "gearshape") }
+                    .accessibilityLabel("打开设置")
+            }
+            Label(session.status, systemImage: "circle.fill").foregroundStyle(session.statusColor)
+            Text("课堂录音 · 演示模式").font(.callout).foregroundStyle(.secondary)
+            Picker("字幕内容", selection: $session.layout) {
+                ForEach(TextLayout.allCases) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented)
+            HStack {
+                Button(session.actionTitle) {
+                    if session.running && session.scene != .empty { showingStopConfirmation = true }
+                    else { session.startRecording() }
+                }
+                Spacer()
+                Button("设置…", action: session.openSettings)
+            }
+            Text("无需点击 Mac 菜单栏图标，即可打开此面板。")
+                .font(.caption).foregroundStyle(.secondary)
+        }.padding(20).frame(width: 380).background(Color(nsColor: .windowBackgroundColor)).preferredColorScheme(.light)
+        .alert("结束本次记录？", isPresented: $showingStopConfirmation) {
+            Button("继续记录", role: .cancel) {}
+            Button("结束记录", role: .destructive) { session.stopRecording() }
+        } message: {
+            Text("结束后将停止收音、翻译和字幕更新，已有字幕保留。")
+        }
     }
 }
