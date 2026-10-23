@@ -1,0 +1,31 @@
+# 系统文件
+.DS_Store
+**/.DS_Store
+
+# 本地 MCP / Agent 配置，可能包含 API key 或本机路径
+.mcp.json
+.codex/config.toml
+.claude/settings.local.json
+
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 环境变量与凭据
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa*
+*credentials*
+*secret*
+*token*
+service-account*.json
