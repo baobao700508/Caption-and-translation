@@ -40,9 +40,9 @@
 -->
 
 - **项目是什么**：Caption and translation，面向 macOS 的实时字幕、原文转写与同声传译工具。
-- **技术栈**：Swift、SwiftUI、AppKit（macOS 原生应用）。
-- **最高层架构原则**：原生 macOS 桌面应用；凭据与本机运行配置不进入公开仓库。
-- **（可选）其他极稳定事实**：<!-- 例：品牌名、成立年份、固定协作方工具链等 -->
+- **技术栈**：Swift、SwiftUI、AppKit，使用 Swift Package Manager 组织工程；音频采集与播放使用 CoreAudio、AVFoundation，并通过 C/C++、Objective-C 与 Objective-C++ 桥接原生音频组件。
+- **最高层架构原则**：原生 macOS 桌面应用；应用与系统集成由 LiveCaptionApp 承接，协议、字幕处理与日志等核心能力置于 LiveCaptionCore；凭据与本机运行配置不进入公开仓库。
+- **其他极稳定事实**：应用名称为 LiveCaption，工程名称为 Caption and translation。
 
 ---
 
@@ -78,15 +78,21 @@
 ```
 Caption and translation/
 ├── Sources/
-│   ├── LiveCaptionApp/  # Session、Configuration、Audio、Presentation、Preferences、Verification
-│   ├── LiveCaptionCore/ # Configuration、Providers、Networking、Captions、Audio、Logging
-│   ├── LiveCaptionModelSetup/ # 开发者的本地 Whisper 下载与验证入口
-│   └── *Bridge/        # C/C++ 与 Objective-C 音频桥接
-├── Tests/            # 可执行核心检查与测量脚本检查
-├── Resources/        # 应用元信息、配置样例与许可证
+│   ├── LiveCaptionApp/  # 会话协调、系统采音与播放、字幕界面、设置及应用内验证
+│   ├── LiveCaptionCore/ # 配置、供应商协议与传输、字幕处理、音频队列及日志
+│   ├── LiveCaptionModelSetup/ # 开发者的本地 Whisper 下载与验证工具
+│   ├── LiveCaptionReflowProbe/ # 基于固定双语样本的字幕整理验证工具
+│   ├── LiveCaptionWhisperProbe/ # 基于 WAV 输入的原文转写诊断工具
+│   ├── LiveCaptionVerify/ # 基于 WAV 输入的转写、翻译与译音验证工具
+│   ├── AudioBridge/   # 原生音频环形缓冲与降噪桥接
+│   ├── WebRTCBridge/  # WebRTC 原生音频设备与媒体传输桥接
+│   └── AoqBridge/     # 传输实验使用的 Aoq SDK 桥接
+├── Tests/            # 可执行核心检查及延迟测量、模型安装等 Python 检查
+├── Resources/        # 应用元信息、图标、配置样例、本地模型安装清单与许可证
 ├── scripts/          # 依赖准备、构建、发布与验证入口
 ├── Documentation/    # 架构、日志契约与工程约定
 ├── Experiments/      # 传输研究代码；历史工作副本仅本机保留
+├── LocalOnly/        # 本机历史验证资料，不进入公开仓库
 ├── TestResults/      # 本机测试证据与录音，不进入公开仓库
 ├── Vendor/           # 本机第三方依赖，不进入公开仓库
 ├── Releases/         # 本机发布记录与历史包，不进入公开仓库
