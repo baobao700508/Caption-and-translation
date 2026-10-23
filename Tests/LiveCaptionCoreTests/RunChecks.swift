@@ -19,6 +19,8 @@ func XCTAssertLessThan<T: Comparable>(_ lhs: T, _ rhs: T, file: StaticString = #
         }
         let checks = PipelineChecks()
         let cases: [(String, () async throws -> Void)] = [
+            ("本地模型未完成下载不能标记可用，自定义环境保留", { try checks.testModelReadinessRejectsIncompleteDownloads() }),
+            ("取消SaT环境准备会终止安装进程，不能继续发布完成标记", { try await checks.testSaTPreparationCancellationStopsWorker() }),
             ("旧JEV与聊天配置迁移SaT，删除整理云端地址和凭据字段", { try checks.testSaTOnlyMigrationDropsCloudConfiguration() }),
             ("关闭SaT原样保留VAD三段与乱序中英关联，取消排队及迟到结果", { try await checks.testSaTOffPreservesVADGroupsAndCancelsWork() }),
             ("Speaker 编号0保留、同人复用、关联译文继承及VAD不编造编号", { try await checks.testBailianSpeakerIdentityIsPreserved() }),

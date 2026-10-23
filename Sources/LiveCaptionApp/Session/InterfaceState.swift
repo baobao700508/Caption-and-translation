@@ -11,10 +11,10 @@ enum RecordingMode: String, CaseIterable, Identifiable {
 }
 enum CaptionPresentation: String { case expanded, compact, hidden }
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case session, appearance, audio, records
+    case session, appearance, audio, models, records
     var id: String { rawValue }
-    var title: String { switch self { case .session: "模式与音源"; case .appearance: "字幕与外观"; case .audio: "音频处理"; case .records: "记录与连接" } }
-    var icon: String { switch self { case .session: "waveform"; case .appearance: "textformat.size"; case .audio: "slider.horizontal.3"; case .records: "folder" } }
+    var title: String { switch self { case .session: "模式与音源"; case .appearance: "字幕与外观"; case .audio: "音频处理"; case .models: "本地模型"; case .records: "记录与连接" } }
+    var icon: String { switch self { case .session: "waveform"; case .appearance: "textformat.size"; case .audio: "slider.horizontal.3"; case .models: "arrow.down.circle"; case .records: "folder" } }
 }
 
 @MainActor final class PreferencesWindowController {

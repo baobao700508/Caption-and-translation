@@ -20,8 +20,14 @@ struct CaptionReflowSettings:View {
             Picker("SaT 模型",selection:Self.parameterBinding(session:session,\.model)) {
                 ForEach(SaTReflowConfiguration.models,id:\.self) { Text($0).tag($0) }
             }.accessibilityIdentifier("sat-model")
-            TextField("本地 Python 路径",text:Self.parameterBinding(session:session,\.pythonExecutable))
-                .accessibilityIdentifier("sat-python")
+                .disabled(session.localModels.sat.active)
+            Button("下载／检查 SaT 模型与环境") { session.showSettings(.models) }
+            DisclosureGroup("开发者：自定义 Python 环境") {
+                Text("默认自动使用 App 管理的环境；只有使用自行安装的依赖时才修改此项。填写路径不会安装依赖。")
+                    .font(.caption).foregroundStyle(.secondary)
+                TextField("本地 Python 路径",text:Self.parameterBinding(session:session,\.pythonExecutable))
+                    .accessibilityIdentifier("sat-python")
+            }
             HStack {
                 Text("换段阈值")
                 Slider(value:Self.parameterBinding(session:session,\.paragraphThreshold),in:0.1...0.9,step:0.05)

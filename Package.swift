@@ -20,6 +20,7 @@ let package = Package(
         .target(name:"LiveCaptionTransportExperiments",dependencies:["LiveCaptionCore","AoqBridge"],path:"Experiments/RealtimeTransports",exclude:["README.md","probe_tcp.py","probe_webrtc.py"]),
         .executableTarget(name: "LiveCaptionApp", dependencies: ["LiveCaptionCore", "AudioBridge"]),
         .executableTarget(name: "LiveCaptionChecks", dependencies: ["LiveCaptionCore", "AudioBridge"], path: "Tests/LiveCaptionCoreTests"),
+        .executableTarget(name:"LiveCaptionModelSetup",dependencies:["LiveCaptionCore"]),
         .executableTarget(name: "LiveCaptionReflowProbe", dependencies: ["LiveCaptionCore"], path: "Sources/LiveCaptionReflowProbe"),
         .executableTarget(name: "LiveCaptionWhisperProbe", dependencies: ["LiveCaptionCore"], path:"Sources/LiveCaptionWhisperProbe"),
         .executableTarget(name: "LiveCaptionVerify", dependencies: ["LiveCaptionCore","LiveCaptionTransportExperiments"], path: "Sources/LiveCaptionVerify")

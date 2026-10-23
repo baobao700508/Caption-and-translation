@@ -52,6 +52,7 @@ struct PreferencesView: View {
         case .session: return "选择记录方式，以及要听到的声音。"
         case .appearance: return "调整字幕内容、阅读大小与浮窗操作。"
         case .audio: return "应用内自动处理声音，可按输入设备调整。"
+        case .models: return "按需下载模型及完整运行环境，准备好后再开始记录。"
         case .records: return "查看课堂日志位置与当前服务连接。"
         }
     }
@@ -60,6 +61,7 @@ struct PreferencesView: View {
         case .session: sessionSettings
         case .appearance: appearanceSettings
         case .audio: audioSettings
+        case .models: LocalModelsSettings(session:session,models:session.localModels)
         case .records: recordSettings
         }
     }
@@ -71,6 +73,15 @@ struct PreferencesView: View {
     }
     private var sessionSettings:some View {
         Group {
+            if !session.configurationReady {
+                Section("首次使用") {
+                    Text("① 创建配置，或选择已有配置。② 在“本地模型”下载需要的模型。③ 选择音源并开始；macOS 会在采集时请求授权。")
+                        .font(.callout)
+                    Button("创建本机配置") { Task { await session.createInitialConfiguration() } }
+                        .disabled(session.configurationLoading).accessibilityIdentifier("create-initial-configuration")
+                    Button("选择已有配置…") { Task { await session.chooseConfiguration() } }
+                }
+            }
             Section("记录模式") {
                 ModeSelector(session:session).labelsHidden()
                 Text(session.recordingMode.detail).font(.caption).foregroundStyle(.secondary)
@@ -83,7 +94,8 @@ struct PreferencesView: View {
                         Picker("原文语言",selection:$session.config.localWhisper.language) {
                             Text("英语").tag("en"); Text("中文").tag("zh"); Text("自动检测").tag("")
                         }.disabled(session.running || session.busy).onChange(of:session.config.localWhisper.language) { _,_ in session.preferencesChanged() }
-                        Text("Whisper Turbo 在本机通过苹果 GPU 识别。首次开始会下载并准备模型；准备完成后再开始采音。字幕整理如启用在线模型，仍会发送文字。").font(.caption).foregroundStyle(.secondary)
+                        Text("Whisper Turbo 在本机通过苹果 GPU 识别，声音和字幕不发到云端。首次使用请先在“本地模型”下载并准备。").font(.caption).foregroundStyle(.secondary)
+                        Button("下载／检查 Whisper") { session.showSettings(.models) }
                     }
                 }
                 if session.config.pipeline == .translate {
@@ -97,6 +109,23 @@ struct PreferencesView: View {
                     }
                     if session.running { Text("目标语言可在结束本次记录后更改。").font(.caption).foregroundStyle(.secondary) }
                 }
+            }
+            if session.configurationReady && session.config.provider != .whisperKit {
+                Section("云服务连接") {
+                    if session.config.provider == .bailian {
+                        Picker("服务地区",selection:$session.config.bailianRegion) {
+                            Text("新加坡").tag(BailianRegion.singapore);Text("北京").tag(BailianRegion.beijing)
+                        }.onChange(of:session.config.bailianRegion) { _,_ in session.preferencesChanged() }
+                        TextField("工作空间 ID",text:$session.config.bailianWorkspaceID)
+                            .onChange(of:session.config.bailianWorkspaceID) { _,_ in session.preferencesChanged() }
+                        SecureField("百炼 API Key",text:$session.config.bailianAPIKey)
+                        Text("API Key 与工作空间必须属于所选地区。书面同译只请求文字；同声传译另请求译音。")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else { SecureField("Google API Key",text:$session.config.apiKey) }
+                    Button("保存服务凭据") { Task { await session.saveCloudCredentials() } }
+                    Text("凭据保存在 macOS 钥匙串，不写入字幕与安装日志。本地模型下载不需要这些密钥。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.disabled(session.running || session.busy)
             }
             Section("声音来源") {
                 Toggle("电脑播放声音",isOn:audioBinding(\.systemAudioEnabled)).disabled(session.busy || (session.running && session.config.systemAudioEnabled && !session.config.microphoneEnabled))

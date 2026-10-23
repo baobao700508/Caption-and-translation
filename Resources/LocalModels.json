@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "runtimeVersion": "python-3.12.15-sat-v1",
+  "python": {
+    "arm64": {
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz",
+      "sha256": "9866e11cf2ae9caa1e671383786f248859a52dd8bfb702fb4c0dc2c65f1d36de",
+      "bytes": 25052618
+    },
+    "x86_64": {
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-x86_64-apple-darwin-install_only_stripped.tar.gz",
+      "sha256": "d09998f85752b646873a8a6bc7eea442a0d251b1c8d2413aa8ea06ef131c3335",
+      "bytes": 24774808
+    }
+  },
+  "models": {
+    "sat-3l": {
+      "revision": "a3b7ba6b61881d619989757aea971cde7d3d6a98",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/segment-any-text/sat-3l/resolve/a3b7ba6b61881d619989757aea971cde7d3d6a98/config.json",
+          "sha256": "6776b6599eb276cfcc0a0f37bb7c723d70812653c1bfc05e300cdbed6000932e",
+          "bytes": 5571
+        },
+        {
+          "name": "model_optimized.onnx",
+          "url": "https://huggingface.co/segment-any-text/sat-3l/resolve/a3b7ba6b61881d619989757aea971cde7d3d6a98/model_optimized.onnx",
+          "sha256": "638e0507a6ad6e884b2f0e247719dfca97708e4653cd5b3afd91de090c0e6ac1",
+          "bytes": 427946487
+        }
+      ]
+    },
+    "sat-3l-sm": {
+      "revision": "137da054051ad9f1eac42025f758db4ac9f22535",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/segment-any-text/sat-3l-sm/resolve/137da054051ad9f1eac42025f758db4ac9f22535/config.json",
+          "sha256": "d61498bc239f773126ee794446cdcad88822967e0b02ae7bd070f725c98be791",
+          "bytes": 965
+        },
+        {
+          "name": "model_optimized.onnx",
+          "url": "https://huggingface.co/segment-any-text/sat-3l-sm/resolve/137da054051ad9f1eac42025f758db4ac9f22535/model_optimized.onnx",
+          "sha256": "8573277b4dbea9c5fb1b4cfd8c21e5aa628069ac8258d1342ba664e1b64ada6d",
+          "bytes": 427756189
+        }
+      ]
+    },
+    "sat-12l": {
+      "revision": "ec70032f27b87a26e1ce2907a97eb9c9cf53eab1",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/segment-any-text/sat-12l/resolve/ec70032f27b87a26e1ce2907a97eb9c9cf53eab1/config.json",
+          "sha256": "ee63fb740bd478f277e45a2beb6b011eeed797e7b8841786669721e0a53a8c84",
+          "bytes": 5572
+        },
+        {
+          "name": "model_optimized.onnx",
+          "url": "https://huggingface.co/segment-any-text/sat-12l/resolve/ec70032f27b87a26e1ce2907a97eb9c9cf53eab1/model_optimized.onnx",
+          "sha256": "c8704f695246a12449ede8aaa8ef7deb107ac77c982d63bef15d7ac4a5a68968",
+          "bytes": 556478056
+        }
+      ]
+    },
+    "sat-3l-no-limited-lookahead": {
+      "revision": "253e7720e42ced241ad3a7926d5121c69175b166",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/segment-any-text/sat-3l-no-limited-lookahead/resolve/253e7720e42ced241ad3a7926d5121c69175b166/config.json",
+          "sha256": "cd80f01aae2cd81e751ee7799696867fa2a6c2ef20da28993c0acade6d58e4c5",
+          "bytes": 5573
+        },
+        {
+          "name": "model_optimized.onnx",
+          "url": "https://huggingface.co/segment-any-text/sat-3l-no-limited-lookahead/resolve/253e7720e42ced241ad3a7926d5121c69175b166/model_optimized.onnx",
+          "sha256": "368dcb8c67e2efbce8d46f5586f5515a63be2a5722a1f8776a41393facba7d3c",
+          "bytes": 427925373
+        }
+      ]
+    },
+    "tokenizer": {
+      "revision": "e73636d4f797dec63c3081bb6ed5c7b0bb3f2089",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/facebookAI/xlm-roberta-base/resolve/e73636d4f797dec63c3081bb6ed5c7b0bb3f2089/config.json",
+          "sha256": "d66ed8cd4f2a93b358c245e50736fa389ed4f35c0bae7aad0b32abb20c62b579",
+          "bytes": 615
+        },
+        {
+          "name": "tokenizer.json",
+          "url": "https://huggingface.co/facebookAI/xlm-roberta-base/resolve/e73636d4f797dec63c3081bb6ed5c7b0bb3f2089/tokenizer.json",
+          "sha256": "a898ea75433890f6610f4e470b8ebeb0c21dce5c8dd61f892eb09eb5919d2e2c",
+          "bytes": 9096718
+        },
+        {
+          "name": "tokenizer_config.json",
+          "url": "https://huggingface.co/facebookAI/xlm-roberta-base/resolve/e73636d4f797dec63c3081bb6ed5c7b0bb3f2089/tokenizer_config.json",
+          "sha256": "994f46754c5bf4014f1aa92d34b1374319c3a6b3f702105cd5b742beaecd18ce",
+          "bytes": 25
+        },
+        {
+          "name": "sentencepiece.bpe.model",
+          "url": "https://huggingface.co/facebookAI/xlm-roberta-base/resolve/e73636d4f797dec63c3081bb6ed5c7b0bb3f2089/sentencepiece.bpe.model",
+          "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865",
+          "bytes": 5069051
+        }
+      ]
+    }
+  }
+}

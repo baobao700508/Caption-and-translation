@@ -22,6 +22,7 @@ import LiveCaptionCore
     @Published var lastCaptionAt: Date?
     var preferencesWindow: PreferencesWindowController?
     var menuBar: MenuBarController?
+    let localModels=LocalModelManager()
     @Published var sourceText = "选择音源，开始课堂记录"
     @Published var translatedText = ""
     @Published var captionParagraphs: [CaptionParagraph] = []
@@ -179,15 +180,16 @@ extension AppSession {
             self.errorMessage = "配置读取仍在等待系统响应；可点“选择配置…”重新授予文件访问。"
         }
         let fallback = configurationURL
-        let bookmark = UserDefaults.standard.data(forKey:"configuration-bookmark")
+        let bookmark = verificationInProgress ? nil : UserDefaults.standard.data(forKey:"configuration-bookmark")
+        let useKeychain = !verificationInProgress
         let result = await Task.detached(priority: .userInitiated) { () -> Result<(Configuration, Date, URL), Error> in
             do {
                 var stale = false
                 let url = bookmark.flatMap { try? URL(resolvingBookmarkData:$0,options:.withSecurityScope,relativeTo:nil,bookmarkDataIsStale:&stale) } ?? fallback
                 let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 var config = try Configuration.load(from: url)
-                if config.bailianAPIKey.isEmpty { config.bailianAPIKey = KeyStorage.load(provider:.bailian) ?? "" }
-                if config.apiKey.isEmpty { config.apiKey = KeyStorage.load() ?? "" }
+                if useKeychain && config.bailianAPIKey.isEmpty { config.bailianAPIKey = KeyStorage.load(provider:.bailian) ?? "" }
+                if useKeychain && config.apiKey.isEmpty { config.apiKey = KeyStorage.load() ?? "" }
                 let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
                 return .success((config,date,url))
             } catch { return .failure(error) }
@@ -209,7 +211,8 @@ extension AppSession {
                 }
                 UserDefaults.standard.set(1,forKey:"caption-layout-control-version"); savePreferences()
             }
-            fileDate = date; UserDefaults.standard.set(date,forKey:"last-config-date")
+            fileDate = date
+            if !verificationInProgress { UserDefaults.standard.set(date,forKey:"last-config-date") }
             errorMessage = nil
             configurationReady = true
         case .failure:
@@ -225,6 +228,39 @@ extension AppSession {
     }
     var selectedConfigurationURL: URL { configurationURL }
     func openConfiguration() { NSWorkspace.shared.open(configurationURL) }
+    func createInitialConfiguration(root:URL?=nil) async {
+        guard !running && !busy else { return }
+        let url=(root ?? LocalModelFiles.root).appendingPathComponent("Configuration.json")
+        do {
+            try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
+            if !FileManager.default.fileExists(atPath:url.path) {
+                var initial=Configuration();initial.pipeline = .transcribe;initial.transcribeProvider = .whisperKit
+                initial.captionReflow.enabled=false
+                let encoder=JSONEncoder();encoder.outputFormatting=[.prettyPrinted,.sortedKeys]
+                try encoder.encode(initial).write(to:url,options:.withoutOverwriting)
+            }
+            let bookmark=try url.bookmarkData(options:.withSecurityScope,includingResourceValuesForKeys:nil,relativeTo:nil)
+            if !verificationInProgress { UserDefaults.standard.set(bookmark,forKey:"configuration-bookmark") }
+            configurationURL=url
+            await reloadConfiguration()
+            showSettings(.models)
+            feedback="配置已创建。下载 Whisper 后即可本地转写；需要翻译时再填写云服务凭据。"
+        } catch { errorMessage="无法创建配置："+error.localizedDescription }
+    }
+    func saveCloudCredentials() async {
+        let snapshot=config
+        let saved=await Task.detached { ()->Bool in
+            if !snapshot.apiKey.isEmpty && !KeyStorage.save(snapshot.apiKey) { return false }
+            if !snapshot.bailianAPIKey.isEmpty && !KeyStorage.save(snapshot.bailianAPIKey,provider:.bailian) { return false }
+            return true
+        }.value
+        guard saved else { errorMessage="钥匙串未能保存凭据，请检查系统授权后重试。";return }
+        do {
+            fileDate=try await reflowSettingsWriter.saveConnection(snapshot,url:configurationURL)
+            UserDefaults.standard.set(fileDate,forKey:"last-config-date")
+            savePreferences();feedback="服务凭据已保存到 macOS 钥匙串，其他选择已保存。"
+        } catch { errorMessage="凭据已存钥匙串，但配置文件未能保存："+error.localizedDescription }
+    }
     func preferencesChanged() { savePreferences() }
     private func saveAppearance() {
         guard !verificationInProgress else { return }
@@ -248,6 +284,10 @@ extension AppSession {
         do {
             guard configurationReady else { throw CaptionError.message("配置尚未就绪，请先选择配置文件") }
             try config.validate()
+            if config.provider == .whisperKit && !LocalModelFiles.whisperReady(config.localWhisper) {
+                showSettings(.models)
+                throw CaptionError.message("请先在“本地模型”完成 Whisper 下载与验证，再开始记录。")
+            }
             if persistSettings && config.provider != .whisperKit { let key = config.activeAPIKey; let provider = config.provider; await Task.detached { KeyStorage.save(key,provider:provider) }.value }
             if persistSettings { savePreferences() }
             let root = URL(fileURLWithPath:(config.logDirectory as NSString).expandingTildeInPath)

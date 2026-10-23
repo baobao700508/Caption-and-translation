@@ -59,7 +59,10 @@ import LiveCaptionCore
                 await ClassroomSmoke.run(fixture:args[index+1],output:args[index+2],pipeline:Pipeline(rawValue:args[index+3]) ?? .transcribe,configurationPath:configPath,exerciseSwitches:args.contains("--verify-switches"),session:session)
                 if args.contains("--verification-exit") { NSApp.terminate(nil) }
             }
-        } else { Task { await session.reloadConfiguration(preservePreferences: true) } }
+        } else { Task {
+            await session.reloadConfiguration(preservePreferences: true)
+            if !session.configurationReady { session.showSettings() }
+        } }
         if let index = args.firstIndex(of: "--verify-launch"), args.count > index+1 {
             let path = args[index+1]
             DispatchQueue.main.asyncAfter(deadline: .now()+1) { [self] in
@@ -107,6 +110,7 @@ import LiveCaptionCore
         session.showSettings(); return true
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        session.localModels.cancelAll()
         guard session.running else { return .terminateNow }
         Task { await session.stop(); NSApp.reply(toApplicationShouldTerminate: true) }
         return .terminateLater

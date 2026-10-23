@@ -10,47 +10,70 @@ macOS 原生实时字幕、原文转写与同声传译工具。以电脑播放�
 
 字幕后台整理仅使用 **SaT 本机模型**。关闭“后台整理字幕”时，直接按服务器返回的语音活动检测（VAD）语段显示，中英文按服务端明确的关联配对。JEV 和普通聊天大模型不参与整理。
 
-## 环境
+## 普通用户首次使用
 
-- macOS 14.2 或更新系统；当前实机验证环境为 Apple Silicon。
-- Xcode 或兼容的 Swift 工具链及 macOS SDK；包使用 Swift tools 5.10。
-- Python 3.12 或更新版本，用于依赖准备、构建和验证脚本。
-- 启用 SaT 时需要独立的本机 Python 环境；首次使用所选模型需要下载模型。
-- 使用公开录音验证脚本时需要 `ffmpeg`；正常运行应用不依赖 `ffmpeg`。
+使用构建好的 `LiveCaption.app` 不需要安装 Python、Homebrew、Xcode 或命令行工具。最低系统为 macOS 14.2；目前实机验收为 Apple Silicon。当前发布包使用本机 ad-hoc 签名，外部分发的 Developer ID 签名和公证尚未完成，不能将本机启动验收当作全新 Mac 的 Gatekeeper 验收。
 
-语音采集、降噪、网络连接和播放使用原生代码。SaT 在本机 Python worker 中推理；WhisperKit 使用 Core ML，本机识别模型在准备完成后才开始接收音频。
+1. 下载发布的完整 App，放到“应用程序”后打开。首次打开不会自动录音。
+2. 没有配置时，在设置中点“创建本机配置”；已有配置可点“选择已有配置”。新建配置默认选择无需密钥的 Whisper 本地原文转写，不覆盖已有文件。
+3. 在设置 → **本地模型**，按需点“下载并准备”：Whisper 用于本地原文转写，SaT 用于字幕段落整理。只使用云端服务且关闭整理时，两者均无需下载。
+4. 等待显示实际运行验证通过。下载、依赖安装、文件校验和模型验证分阶段显示；下载模型文件时显示进度。可取消、重试及打开安装日志。SaT 首次准备会一起下载独立 Python 和所需依赖，不修改系统 Python；Whisper 不需要 Python。
+5. 在“模式与音源”选择记录方式。翻译或 Google 在线转写需要填写对应地区的服务凭据并点击“保存服务凭据”；密钥保存在 macOS 钥匙串。原文转写选择 Whisper 时不需要云端密钥。
+6. 选择音源后开始记录。按 macOS 提示授权系统音频录制；加入麦克风时另需麦克风权限。需要整理时，在“字幕与外观”开启“后台整理字幕”。下载完成本身不会自动开启整理或录音。
 
-## 快速开始
+下载需要访问 GitHub、PyPI 与 Hugging Face。网络错误不会被标记成安装成功；重试会复用已经校验的模型文件。未完成的 SaT 模型不能成为可用模型；Whisper 需要下载、分词器准备及本机识别验证完成，才允许连接本地识别器。旧版 Whisper 缓存可通过下载按钮复用并补齐验证，无需手工删除或重新下载完整模型。
+
+## 模型、依赖与空间
+
+App 本体不携带 SaT 或 Whisper 模型。下载文件统一位于 `~/Library/Application Support/LiveCaption/`，移动或更新 App 不会删除这些文件：
+
+```text
+LiveCaption/
+├── Configuration.json       # 首次创建的配置；凭据保存在钥匙串
+├── SaT/
+│   ├── python-…-sat-v1-arm64/ # 独立 Python 与固定版本的 SaT 依赖
+│   ├── models/<模型名>/      # 校验后的 ONNX 模型与完成记录
+│   └── tokenizer/           # SaT 模型共用分词器
+├── WhisperKit/              # Core ML 模型、分词器与验证记录
+└── InstallLogs/             # 下载与安装日志
+```
+
+默认 `sat-3l` 模型约 428 MB、分词器约 14 MB，另需 Python 和依赖空间，建议预留 2 GB。Whisper Turbo 安装后约 1.5 GB，建议预留 3 GB。以上为本机文件及模型清单对应的近似值，不是压缩下载大小保证。SaT 的多个模型共用运行环境，不重复安装依赖。
+
+SaT 的 Python 下载地址、处理器架构、SHA-256、模型版本与模型文件哈希固定在 `Resources/LocalModels.json`；依赖版本固定在 `Resources/SaT-requirements.txt`。只从 [python-build-standalone 官方发行包](https://github.com/astral-sh/python-build-standalone)、PyPI、对应 Hugging Face 模型仓库下载。普通用户无需构建模型。模型准备完成后，SaT 使用本地路径离线推理，字幕不发送到模型下载站点。
+
+## 开发者从源码构建
+
+需要安装 Xcode／兼容的 Swift 5.10 以上工具链及 macOS SDK，并完成工具链首次初始化。无需先安装系统 Python、SaT、Whisper 模型或 Homebrew。构建阶段需要联网下载固定版本的第三方依赖。
 
 ```bash
 git clone https://github.com/baobao700508/Caption-and-translation.git
 cd Caption-and-translation
-cp -n Resources/Configuration.example.json "$HOME/Desktop/LiveCaption配置.json"
+bash scripts/develop.sh
+open TestResults/development/LiveCaption.app
 ```
 
-编辑桌面的配置文件，填写对应服务的凭据。已有配置可继续使用，也可在设置中通过“选择配置”指定另一个 JSON 文件。
+`develop.sh` 下载并校验独立 Python，准备固定版本的 WebRTC SDK、Meson、Ninja 与音频静态库，执行核心检查，再构建和签名隔离开发包。它不下载 SaT 或 Whisper 模型、不覆盖桌面正式 App、不要求云端密钥。开发包可以像普通用户一样通过下载按钮准备模型。
 
-首次从源码构建时，先准备音频静态库，供发布前的核心检查使用：
+也可从源码单独准备本地模型，与 App 使用相同下载清单和目录：
 
 ```bash
-python3 scripts/build_audio.py
+bash scripts/setup-sat.sh sat-3l
+# 先完成 develop.sh，再使用同一 Swift 工具链：
+swift run --scratch-path .build-selected-toolchain LiveCaptionModelSetup whisper
 ```
 
-需要本机字幕整理时，再准备 SaT：
+开发者使用自备 SaT 环境时，可以在“字幕与外观 → 开发者：自定义 Python 环境”设置解释器；该环境须自行安装相应依赖。默认路径自动优先使用 App 管理并验证的运行环境，兼容已有本机环境。`LIVECAPTION_MODEL_HOME` 可把独立测试的模型与安装记录隔离到另一个目录，不修改正常用户数据。
 
-```bash
-bash scripts/setup-sat.sh
-```
+源码中的 `Resources/Configuration.example.json` 是可填写模板；也可在 App 内创建配置并填写凭据。公开录音验证脚本额外需要 `ffmpeg`，正常运行和普通构建不需要它。
 
-结束正在进行的记录并退出旧版应用后，构建并打开：
+结束记录并退出旧版 App 后，正式发布使用：
 
 ```bash
 bash scripts/build.sh --activate --archive-legacy
 ```
 
-构建入口会下载并校验固定版本的 WebRTC SDK，必要时构建独立降噪库，再执行核心检查、签名检查和原生界面检查。通过后发布到 `dist/LiveCaption.app`，桌面 `LiveCaption.app` 指向该唯一正式包。已有发布记录时，重新正式发布前须递增 `Resources/Info.plist` 中的整数 build；开发构建可使用下文的隔离输出目录。
-
-启动应用不会自动录音。首次使用时，按 macOS 提示授权系统音频录制；启用麦克风时另需麦克风权限。
+正式构建检查、签名检查和原生界面检查通过后，发布到 `dist/LiveCaption.app`，桌面入口指向该唯一正式包。已有发布记录时须递增 `Resources/Info.plist` 中的整数 build；日常开发使用 `develop.sh` 的隔离输出。正式发布脚本使用 Python 3.12 以上；通过 `develop.sh` 准备的独立解释器也可用于执行发布脚本。
 
 ## 配置与凭据
 
@@ -229,7 +252,7 @@ bash scripts/verify-human-app.sh transcribe
 git switch -c inspect-baseline baseline/pre-refactor-20261022
 ```
 
-安装包含 SwiftParser／SwiftSyntax 的 Xcode 工具链后，可对照重构的源码语法：
+结构重构的语法审计对应 `v0.1.19-build23`，在该版本的独立检出目录中运行；新增功能后的主分支不要求与旧基线 token 相同。安装包含 SwiftParser／SwiftSyntax 的 Xcode 工具链后：
 
 ```bash
 python3 scripts/verify-source-refactor.py baseline/pre-refactor-20261022

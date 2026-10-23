@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
 models = {}
@@ -26,8 +27,16 @@ def infer(request):
             options.intra_op_num_threads = 2
             options.inter_op_num_threads = 1
             models.clear()  # At most one loaded model per App process.
-            models[model_name] = SaT(model_name, ort_providers=['CPUExecutionProvider'],
-                                    ort_kwargs={'sess_options': options})
+            root = Path(os.environ.get('LIVECAPTION_MODEL_HOME', Path.home() / 'Library/Application Support/LiveCaption')) / 'SaT'
+            folder = root / 'models' / model_name
+            if (folder / 'ready.json').exists():
+                models[model_name] = SaT(str(folder), tokenizer_name_or_path=str(root / 'tokenizer'),
+                                        ort_providers=['CPUExecutionProvider'], ort_kwargs={'sess_options': options})
+            else:
+                # Existing installations may keep their complete Hugging Face cache.
+                # In App use the environment is offline: missing files never download mid-class.
+                models[model_name] = SaT(model_name, ort_providers=['CPUExecutionProvider'],
+                                        ort_kwargs={'sess_options': options})
     loaded = time.monotonic()
     tracks = []
     for name in ('source', 'translation'):

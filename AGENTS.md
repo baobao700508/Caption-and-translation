@@ -80,6 +80,7 @@ Caption and translation/
 ├── Sources/
 │   ├── LiveCaptionApp/  # Session、Configuration、Audio、Presentation、Preferences、Verification
 │   ├── LiveCaptionCore/ # Configuration、Providers、Networking、Captions、Audio、Logging
+│   ├── LiveCaptionModelSetup/ # 开发者的本地 Whisper 下载与验证入口
 │   └── *Bridge/        # C/C++ 与 Objective-C 音频桥接
 ├── Tests/            # 可执行核心检查与测量脚本检查
 ├── Resources/        # 应用元信息、配置样例与许可证

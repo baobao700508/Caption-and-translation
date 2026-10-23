@@ -4,7 +4,7 @@ from pathlib import Path
 import hashlib, os, subprocess, sys, tarfile, urllib.request
 root=Path(__file__).resolve().parent.parent
 os.chdir(root)
-env=dict(os.environ, DEVELOPER_DIR=os.environ.get('LIVECAPTION_DEVELOPER_DIR','/Library/Developer/CommandLineTools'), MACOSX_DEPLOYMENT_TARGET='14.2')
+env=dict(os.environ, DEVELOPER_DIR=os.environ.get('LIVECAPTION_DEVELOPER_DIR') or os.environ.get('DEVELOPER_DIR') or subprocess.check_output(['xcode-select','-p'],text=True).strip(), MACOSX_DEPLOYMENT_TARGET='14.2')
 vendor=root/'Vendor'; vendor.mkdir(exist_ok=True)
 archive=vendor/'webrtc-audio-processing-2.1.tar.gz'
 url='https://gstreamer.freedesktop.org/src/mirror/webrtc-audio-processing/webrtc-audio-processing-2.1.tar.gz'

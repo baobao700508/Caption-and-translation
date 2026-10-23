@@ -33,9 +33,9 @@ public final class SaTLocalRuntime: @unchecked Sendable {
         lock.lock();let wasCancelled=cancelled.contains(id);active=id;lock.unlock()
         defer { lock.lock();active=nil;cancelled.remove(id);lock.unlock() }
         if wasCancelled { throw CancellationError() }
-        let executable=(c.pythonExecutable as NSString).expandingTildeInPath
+        let executable=LocalModelFiles.satPython(c)
         guard FileManager.default.isExecutableFile(atPath:executable) else {
-            throw CaptionError.message("SaT 本地环境未准备，请先运行 scripts/setup-sat.sh")
+            throw CaptionError.message("SaT 尚未下载，请打开设置中的“本地模型”，下载模型与运行环境。")
         }
         if process?.isRunning != true || python != executable {
             if let process,process.isRunning { process.terminate() }
@@ -44,6 +44,9 @@ public final class SaTLocalRuntime: @unchecked Sendable {
             let script=Bundle.main.url(forResource:"sat-worker",withExtension:"py") ?? root.appendingPathComponent("scripts/sat-worker.py")
             guard FileManager.default.fileExists(atPath:script.path) else { throw CaptionError.message("缺少 SaT 本地推理脚本") }
             worker.executableURL=URL(fileURLWithPath:executable);worker.arguments=["-u",script.path]
+            worker.environment=ProcessInfo.processInfo.environment.merging([
+                "LIVECAPTION_MODEL_HOME":LocalModelFiles.root.path,"HF_HUB_OFFLINE":"1","TRANSFORMERS_OFFLINE":"1","PYTHONNOUSERSITE":"1"
+            ]) { _,new in new }
             worker.standardInput=stdin;worker.standardOutput=stdout;worker.standardError=FileHandle.nullDevice
             try worker.run()
             lock.lock();process=worker;let stopped=cancelled.contains(id);lock.unlock()

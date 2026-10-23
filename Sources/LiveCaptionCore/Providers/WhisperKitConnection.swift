@@ -43,19 +43,10 @@ public actor WhisperKitConnection: ProviderConnection {
                 "load_seconds":Date().timeIntervalSince(started),"language":config.language,"first_token_early_abort":false,"temperature_fallback_count":0])
             await onEvent(.ready);return
         }
-        let folder:URL
-        if !config.modelDirectory.isEmpty {
-            folder=URL(fileURLWithPath:(config.modelDirectory as NSString).expandingTildeInPath)
-        } else {
-            let cached=config.cacheDirectory.appendingPathComponent("models/argmaxinc/whisperkit-coreml/"+config.model)
-            let marker=cached.appendingPathComponent(".livecaption-download-complete")
-            if FileManager.default.fileExists(atPath:marker.path) { folder=cached }
-            else {
-                await diagnostic("model_preparing",["phase":"download","message":"首次使用正在下载本地识别模型…","model":config.model])
-                folder=try await WhisperKit.download(variant:config.model,downloadBase:config.cacheDirectory)
-                try Data().write(to:folder.appendingPathComponent(".livecaption-download-complete"),options:.atomic)
-            }
+        guard LocalModelFiles.whisperReady(config) else {
+            throw CaptionError.message("Whisper 尚未准备完成，请打开设置中的“本地模型”，点击“下载并准备”。")
         }
+        let folder=LocalModelFiles.whisperFolder(config)
         try Task.checkCancellation()
         await diagnostic("model_preparing",["phase":"load","message":"正在载入本地模型并准备 GPU…","model":config.model])
         let compute=ModelComputeOptions(melCompute:.cpuAndGPU,audioEncoderCompute:.cpuAndGPU,textDecoderCompute:.cpuAndGPU)

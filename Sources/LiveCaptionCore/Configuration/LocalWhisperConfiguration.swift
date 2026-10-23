@@ -11,8 +11,7 @@ public struct LocalWhisperConfiguration: Codable, Sendable {
     public var updateIntervalSeconds: Double = 0.8
     public init() {}
     public var cacheDirectory: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/LiveCaption/WhisperKit",isDirectory:true)
+        LocalModelFiles.root.appendingPathComponent("WhisperKit",isDirectory:true)
     }
     public func validate() throws {
         guard !model.isEmpty, !model.contains("/"), !model.contains("..") else { throw CaptionError.message("本地 Whisper 模型名称无效") }

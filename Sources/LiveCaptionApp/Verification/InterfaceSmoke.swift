@@ -97,6 +97,18 @@ import LiveCaptionCore
         }
         session.config.transcribeProvider = .google
         results["google_still_requires_its_key"] = session.configurationProblem != nil && !session.canToggleRecording
+        session.showSettings(.models)
+        results["model_download_page_can_open"] = session.settingsSection == .models && session.preferencesWindow?.isVisible == true
+        let newcomer=AppSession();newcomer.verificationInProgress=true;newcomer.configurationReady=false
+        let onboardingRoot=imageRoot.appendingPathComponent("first-run")
+        await newcomer.createInitialConfiguration(root:onboardingRoot)
+        results["first_run_creates_local_configuration"] = newcomer.configurationReady && newcomer.config.provider == .whisperKit
+        results["first_run_needs_no_cloud_credentials"] = newcomer.config.apiKey.isEmpty && newcomer.config.bailianAPIKey.isEmpty
+        results["first_run_opens_downloads_without_recording"] = newcomer.settingsSection == .models && !newcomer.running
+        let original=try? Data(contentsOf:onboardingRoot.appendingPathComponent("Configuration.json"))
+        await newcomer.createInitialConfiguration(root:onboardingRoot)
+        results["first_run_never_overwrites_existing_config"] = original == (try? Data(contentsOf:onboardingRoot.appendingPathComponent("Configuration.json")))
+        newcomer.preferencesWindow?.close()
         session.preferencesWindow?.close()
         let report:[String:Any] = ["scope":"实际AppKit窗口控制器与界面状态检查；不启动采集或调用云模型，不代替截图与点击验收","tested_at":SessionLog.timestamp(),"menu_bar_diagnostics":session.menuBar?.diagnostics as Any? ?? [:],"checks":results,"success":results.values.allSatisfy{$0}]
         let url = URL(fileURLWithPath:output)
