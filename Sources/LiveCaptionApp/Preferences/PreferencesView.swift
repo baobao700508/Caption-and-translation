@@ -16,6 +16,7 @@ struct PreferencesView: View {
                     Button { session.settingsSection = section } label: {
                         Label(section.title,systemImage:section.icon).frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,12).padding(.vertical,10)
                             .background(session.settingsSection == section ? Color.teal.opacity(0.15) : .clear,in:RoundedRectangle(cornerRadius:8))
+                            .contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityValue(session.settingsSection == section ? "已选中" : "")
                 }
                 Spacer()
