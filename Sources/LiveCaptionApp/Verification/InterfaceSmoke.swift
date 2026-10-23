@@ -33,6 +33,14 @@ import LiveCaptionCore
         session.showSettings(.appearance)
         results["settings_dismisses_menu_bar"] = session.menuBar?.isShown == false
         results["mini_opens_settings"] = session.preferencesWindow?.isVisible == true && session.settingsSection == .appearance
+        session.menuBar?.showDetached()
+        results["menu_controls_open_without_status_item_anchor"] = session.menuBar?.detachedIsVisible == true
+        session.showSettings(.appearance)
+        results["settings_closes_detached_controls"] = session.menuBar?.detachedIsVisible == false && session.preferencesWindow?.isVisible == true
+        let savedOpacity=session.overlayOpacity
+        session.overlayOpacity=0.6
+        results["opacity_remains_adjustable"] = session.overlayOpacity == 0.6
+        session.overlayOpacity=savedOpacity
         session.overlay?.hide()
         results["hidden_state_explicit"] = session.presentation == .hidden && session.overlay?.isVisible == false
         session.showSettings(.records)
@@ -102,5 +110,13 @@ import LiveCaptionCore
         let url = URL(fileURLWithPath:output)
         try? FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
         if let data = try? JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]) { try? data.write(to:url,options:.atomic) }
+        // 隔离包的交互验收状态；不启动声音设备、网络或真实会话。
+        if CommandLine.arguments.contains("--interface-preview") {
+            session.config=config;session.configurationReady=true;session.errorMessage=nil;session.feedback=nil
+            session.captionParagraphs=[];session.sourceText="What matters is whether the next sentence completes the explanation."
+            session.translatedText="关键在于，后面的一句话是否还在补充同一个解释。"
+            session.running=true;session.status="界面验收 · 未采集声音"
+            session.showSubtitles()
+        }
     }
 }

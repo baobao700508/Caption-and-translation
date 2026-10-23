@@ -52,35 +52,12 @@ private struct FloatingIconButton: View {
 }
 struct CaptionView: View {
     @ObservedObject var session: AppSession
+    @State private var hovering = false
+    @State private var confirmingStop = false
+    private var controlsVisible:Bool { hovering || session.sessionStartedAt == nil }
+    private var statusColor:Color { session.errorMessage != nil ? .orange : (session.running ? .teal : .gray) }
     var body: some View {
-        VStack(spacing:0) {
-            HStack(spacing:9) {
-                Image(systemName:"captions.bubble").foregroundStyle(.teal)
-                Text(session.recordingMode.title).font(.caption.weight(.semibold))
-                if session.config.pipeline == .translate {
-                    Picker("字幕显示",selection:$session.config.subtitleLayout) {
-                        Text("仅原文").tag(SubtitleLayout.source)
-                        Text("译文").tag(SubtitleLayout.translation)
-                        Text("双语").tag(SubtitleLayout.bilingual)
-                    }.labelsHidden().frame(width:86)
-                        .onChange(of:session.config.subtitleLayout) { _,_ in session.preferencesChanged() }
-                        .help("选择原文、译文或双语；立即生效")
-                }
-                StatusIndicator(session:session)
-                if session.sessionStartedAt != nil { SessionDuration(session:session) }
-                Spacer(minLength:8)
-                FloatingIconButton(title:"打开设置",symbol:"gearshape") { session.showSettings() }
-                FloatingIconButton(title:"收起为迷你控制条（记录继续）",symbol:"rectangle.compress.vertical") { session.collapseSubtitles() }
-                Menu {
-                    Button("回听录音…") { session.showSettings(.records) }
-                    Button("打开设置…") { session.showSettings() }
-                    Button("重置字幕位置") { session.overlay?.resetPosition() }
-                    Toggle("字幕鼠标穿透",isOn:$session.passthrough)
-                    Divider()
-                    Button("隐藏到菜单栏（记录继续）") { session.overlay?.hide() }
-                } label: { Image(systemName:"ellipsis").frame(width:26,height:30) }.menuStyle(.borderlessButton).fixedSize().help("更多字幕操作").accessibilityLabel("更多字幕操作")
-            }.padding(.horizontal,14).padding(.vertical,8)
-            Divider().overlay(.white.opacity(0.08))
+        Group {
             if session.sessionStartedAt == nil {
                 VStack(alignment:.leading,spacing:10) {
                     Text(session.configurationLoading ? "正在准备 LiveCaption" : "准备好开始记录").font(.title3.weight(.semibold))
@@ -91,17 +68,61 @@ struct CaptionView: View {
             } else {
                 CaptionTranscriptView(session:session)
             }
-            Divider().overlay(.white.opacity(0.08))
-            HStack(spacing:12) {
-                RecordingButton(session:session).controlSize(.small)
-                Text(session.feedback ?? (session.running ? "文字持续写入本机" : "收起字幕不会结束记录")).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                Spacer(minLength:4)
-                Button("记录") { session.revealLogs() }.help("打开课堂日志目录")
-                Button("AI 追课",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil).help("复制供 AI 读取课堂日志的提示")
-            }.font(.caption).buttonStyle(.borderless).padding(.horizontal,14).padding(.vertical,9)
-        }.background(Color.black.opacity(session.overlayOpacity),in:RoundedRectangle(cornerRadius:14))
-            .overlay(RoundedRectangle(cornerRadius:14).stroke(.white.opacity(0.14),lineWidth:1))
-            .preferredColorScheme(.dark)
+        }.padding(.trailing,34)
+            .frame(maxWidth:.infinity,maxHeight:.infinity)
+            .background(Color.black.opacity(session.overlayOpacity),in:RoundedRectangle(cornerRadius:11))
+            .overlay(alignment:.leading) {
+                Capsule().fill(statusColor.opacity(0.8)).frame(width:2,height:20).padding(.leading,5)
+                    .accessibilityLabel(session.status)
+            }
+            .overlay(alignment:.trailing) {
+                VStack(spacing:5) {
+                    VStack(spacing:5) {
+                        RecordingButton(session:session,iconOnly:true)
+                        Menu { moreActions } label: { Image(systemName:"ellipsis").frame(width:24,height:24) }
+                            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                            .help("更多字幕操作").accessibilityLabel("更多字幕操作")
+                    }.opacity(controlsVisible ? 1:0).allowsHitTesting(controlsVisible).accessibilityHidden(!controlsVisible)
+                    Button { session.showSettings() } label: { Image(systemName:"gearshape").frame(width:24,height:24) }
+                        .buttonStyle(.plain).help("打开设置（⌘,）").accessibilityLabel("打开设置")
+                }.padding(3).background(.white.opacity(controlsVisible ? 0.055:0),in:RoundedRectangle(cornerRadius:9))
+                    .padding(.trailing,6)
+            }
+            .overlay(alignment:.bottomLeading) {
+                if let feedback=session.feedback {
+                    Text(feedback).font(.caption2).padding(.horizontal,9).padding(.vertical,5)
+                        .background(.black.opacity(0.88),in:Capsule()).padding(8).allowsHitTesting(false)
+                }
+            }
+            .overlay(RoundedRectangle(cornerRadius:11).stroke(.white.opacity(0.14),lineWidth:0.7))
+            .clipShape(RoundedRectangle(cornerRadius:11))
+            .contentShape(Rectangle())
+            .onHover { hovering=$0 }
+            .onTapGesture { hovering=true }
+            .contextMenu { moreActions }
+            .modifier(RecordingConfirmation(session:session,isPresented:$confirmingStop))
+            .foregroundStyle(.white.opacity(0.8)).preferredColorScheme(.dark)
+    }
+    @ViewBuilder private var moreActions:some View {
+        if session.config.pipeline == .translate {
+            Picker("字幕内容",selection:Binding(get:{session.config.subtitleLayout},set:{ session.config.subtitleLayout=$0;session.preferencesChanged() })) {
+                Text("原文").tag(SubtitleLayout.source); Text("译文").tag(SubtitleLayout.translation); Text("双语").tag(SubtitleLayout.bilingual)
+            }
+        }
+        Button("打开菜单栏控制面板…") { session.menuBar?.showDetached() }
+        Button("打开设置…") { session.showSettings() }
+        Divider()
+        Button("收起为迷你控制条（记录继续）") { session.collapseSubtitles() }
+        Button("打开课堂记录") { session.revealLogs() }
+        Button("回听录音…") { session.showSettings(.records) }
+        Button("AI 追课",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil)
+        Button("重置字幕位置") { session.overlay?.resetPosition() }
+        Toggle("字幕鼠标穿透",isOn:$session.passthrough)
+        Divider()
+        Button(session.primaryActionTitle) {
+            if session.running { confirmingStop=true } else { session.toggleRecording() }
+        }.disabled(!session.canToggleRecording)
+        Button("隐藏到菜单栏（记录继续）") { session.overlay?.hide() }
     }
 }
 struct PassthroughControlsView: View {
