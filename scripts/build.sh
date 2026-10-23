@@ -20,6 +20,7 @@ ditto Vendor/webrtc/WebRTC.xcframework/macos-x86_64_arm64/WebRTC.framework "$app
 codesign --force --sign - "$app/Contents/Frameworks/WebRTC.framework"
 cp "$build_path/release/LiveCaption" "$app/Contents/MacOS/LiveCaption"
 cp Resources/Info.plist "$app/Contents/Info.plist"
+swift scripts/build-icon.swift Resources/LiveCaption.svg "$app/Contents/Resources/LiveCaption.icns"
 cp scripts/sat-worker.py "$app/Contents/Resources/sat-worker.py"
 cp scripts/install-sat.sh scripts/prepare-sat.py Resources/LocalModels.json Resources/SaT-requirements.txt "$app/Contents/Resources/"
 cp Resources/Configuration.example.json "$app/Contents/Resources/"

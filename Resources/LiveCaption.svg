@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <title>LiveCaption</title>
+  <desc>A mint sound wave flowing into two subtitle lines on a midnight blue speech window.</desc>
+  <defs>
+    <linearGradient id="tile" x1="168" y1="80" x2="880" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#203E50"/>
+      <stop offset=".55" stop-color="#102B3B"/>
+      <stop offset="1" stop-color="#0A1929"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="220" y1="208" x2="824" y2="784" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B0FFE4"/>
+      <stop offset="1" stop-color="#37CDBE"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="244" y1="264" x2="744" y2="748" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#315B66"/>
+      <stop offset="1" stop-color="#173F4B"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="220" y1="60" x2="780" y2="964" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity=".03"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="204" fill="url(#tile)"/>
+  <rect x="66" y="66" width="892" height="892" rx="202" stroke="url(#edge)" stroke-width="4"/>
+  <path d="M298 228H746C786 228 818 260 818 300V642C818 682 786 714 746 714H678" stroke="#6BD5C7" stroke-opacity=".2" stroke-width="22" stroke-linecap="round"/>
+  <path d="M268 272H712C752 272 784 304 784 344V644C784 684 752 716 712 716H438L312 804V716H268C228 716 196 684 196 644V344C196 304 228 272 268 272Z" fill="#071B28" fill-opacity=".38" transform="translate(0 18)"/>
+  <path d="M268 272H712C752 272 784 304 784 344V644C784 684 752 716 712 716H438L312 804V716H268C228 716 196 684 196 644V344C196 304 228 272 268 272Z" fill="url(#glass)" stroke="url(#rim)" stroke-width="24" stroke-linejoin="round"/>
+  <g stroke="url(#rim)" stroke-width="28" stroke-linecap="round">
+    <path d="M326 408V444"/>
+    <path d="M386 378V474"/>
+    <path d="M446 352V500"/>
+    <path d="M506 390V462"/>
+    <path d="M566 410V442"/>
+  </g>
+  <circle cx="680" cy="358" r="14" fill="#B8FFE8"/>
+  <path d="M320 568H660" stroke="#F1FFF9" stroke-width="30" stroke-linecap="round"/>
+  <path d="M320 628H530" stroke="#B8DFDB" stroke-width="26" stroke-linecap="round"/>
+</svg>

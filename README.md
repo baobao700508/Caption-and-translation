@@ -228,6 +228,8 @@ LIVECAPTION_APP_PATH="$PWD/TestResults/dev/LiveCaption.app" bash scripts/build.s
 
 工具链默认使用 `xcode-select -p`；可通过 `LIVECAPTION_DEVELOPER_DIR` 指定工具链目录，通过 `LIVECAPTION_BUILD_PATH` 指定独立构建缓存。
 
+应用图标源文件为 `Resources/LiveCaption.svg`。构建时使用 macOS 原生工具自动生成 16～1024 像素的 `.icns`，不需要额外图像库；菜单栏仍使用适应系统外观的单色状态图标。
+
 退出正式应用后，检查原生窗口与状态：
 
 ```bash
