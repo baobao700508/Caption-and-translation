@@ -23,7 +23,8 @@ import LiveCaptionCore
     var preferencesWindow: PreferencesWindowController?
     var menuBar: MenuBarController?
     let localModels=LocalModelManager()
-    @Published var sourceText = "选择音源，开始课堂记录"
+    let aiRecords=AIRecordController()
+    @Published var sourceText = "选择音源，开始会话记录"
     @Published var translatedText = ""
     @Published var captionParagraphs: [CaptionParagraph] = []
     @Published var followsLatestCaption = true {
@@ -188,8 +189,8 @@ extension AppSession {
                 let url = bookmark.flatMap { try? URL(resolvingBookmarkData:$0,options:.withSecurityScope,relativeTo:nil,bookmarkDataIsStale:&stale) } ?? fallback
                 let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 var config = try Configuration.load(from: url)
-                if useKeychain && config.bailianAPIKey.isEmpty { config.bailianAPIKey = KeyStorage.load(provider:.bailian) ?? "" }
-                if useKeychain && config.apiKey.isEmpty { config.apiKey = KeyStorage.load() ?? "" }
+                if useKeychain && config.provider == .bailian && config.bailianAPIKey.isEmpty { config.bailianAPIKey = KeyStorage.load(provider:.bailian) ?? "" }
+                if useKeychain && config.provider == .google && config.apiKey.isEmpty { config.apiKey = KeyStorage.load() ?? "" }
                 let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
                 return .success((config,date,url))
             } catch { return .failure(error) }
@@ -304,6 +305,7 @@ extension AppSession {
             let sessionConfig = config
             let log = try await Task.detached { try SessionLog(configuration: sessionConfig) }.value; logger = log; layoutLogger = log
             try await log.begin(); currentDirectory = log.directory
+            aiRecords.started(directory:log.directory,root:log.root)
             tailIncomplete = false; drainTasks.removeAll()
             audioStartedEpochs.removeAll()
             captionReflow.reset(); lastCaptionSnapshot=nil; displayedProviderItems=[]
@@ -779,10 +781,12 @@ extension AppSession {
         for task in pendingDrains { if !(await task.value) { tailIncomplete = true } }
         drainTasks.removeAll()
         await captionReflow.finish()
-        do { try await logger?.finish(tailIncomplete: tailIncomplete) } catch { errorMessage = "日志或录音收尾失败；已有文件保留在会话目录" }
+        var finishedDirectory:URL?
+        do { try await logger?.finish(tailIncomplete: tailIncomplete);finishedDirectory=logger?.directory } catch { errorMessage = "日志或录音收尾失败；已有文件保留在会话目录" }
         logger = nil; sessionEndedAt = Date(); running = false; busy = false; stopping = false; runID = UUID(); status = "已停止"
         logScopeURL?.stopAccessingSecurityScopedResource(); logScopeURL = nil
         systemLevel = 0; microphoneLevel = 0
+        if let finishedDirectory { aiRecords.finished(directory:finishedDirectory) }
     }
     func chooseLogDirectory() {
         let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = true
@@ -792,9 +796,9 @@ extension AppSession {
     }
     func copyCatchUpPrompt() {
         let root = currentDirectory?.deletingLastPathComponent().deletingLastPathComponent().path ?? config.logDirectory
-        let prompt = "读取 \(root)/latest.json 指向的课堂记录，先看 live.md，必要时查 transcript.md。告诉我刚才讲了什么、关键术语和当前正在讨论的问题，帮我接上课堂。标注记录更新时间、识别中的文字及缺失部分。"
+        let prompt = "读取 \(root)/latest.json 指向的会话记录，先看 live.md，必要时查 transcript.md。告诉我刚才讲了什么、关键术语和当前正在讨论的问题，帮我接上当前讨论。标注记录更新时间、识别中的文字及缺失部分。"
         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(prompt, forType: .string)
-        announce("已复制 AI 追课提示")
+        announce("已复制 AI 接续提示")
     }
     func openRecord() { if let currentDirectory { NSWorkspace.shared.open(currentDirectory.appendingPathComponent("live.md")) } }
     private func redacted(_ text: String) -> String { config.redacted(text) }

@@ -379,7 +379,7 @@ extension PipelineChecks {
         try await c.connect(); try await c.sendAudio(Data([0,0]))
         try await Task.sleep(nanoseconds:400_000_000)
         let live = try String(contentsOf:log.directory.appendingPathComponent("live.md"))
-        XCTAssertTrue(live.contains("The classroom")); XCTAssertTrue(live.contains("活动：true"))
+        XCTAssertTrue(live.contains("The classroom")); XCTAssertTrue(live.contains("记录中"))
         let complete = await c.finish(); XCTAssertTrue(complete); await c.close(); try await log.flush()
         let journal = try String(contentsOf:log.directory.appendingPathComponent("events.jsonl"))
         XCTAssertFalse(journal.contains(config.apiKey)); XCTAssertFalse(journal.contains(config.bailianAPIKey))

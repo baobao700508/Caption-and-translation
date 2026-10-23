@@ -31,7 +31,7 @@ struct QuickControlsView: View {
             HStack {
                 Button("打开记录") { session.revealLogs() }
                 Button("回听录音") { session.showSettings(.records) }
-                Button("AI 追课",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil)
+                Button("AI 接续",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil)
                 Spacer(); Button("设置…") { session.showSettings() }
             }.font(.caption)
             if let feedback = session.feedback { Text(feedback).font(.caption).foregroundStyle(.teal) }
@@ -62,7 +62,7 @@ struct CaptionView: View {
                 VStack(alignment:.leading,spacing:10) {
                     Text(session.configurationLoading ? "正在准备 LiveCaption" : "准备好开始记录").font(.title3.weight(.semibold))
                     Text("\(session.recordingMode.title) · \(session.sourceSummary)").font(.callout).foregroundStyle(.secondary)
-                    Text("字幕可收起为迷你条，课堂文字会持续写入本机日志。").font(.caption).foregroundStyle(.secondary)
+                    Text("字幕可收起为迷你条，会话文字会持续写入本机日志。").font(.caption).foregroundStyle(.secondary)
                     if let problem = session.configurationProblem { Text(problem).font(.caption).foregroundStyle(.orange).lineLimit(2) }
                 }.frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.leading).padding(18)
             } else {
@@ -113,9 +113,9 @@ struct CaptionView: View {
         Button("打开设置…") { session.showSettings() }
         Divider()
         Button("收起为迷你控制条（记录继续）") { session.collapseSubtitles() }
-        Button("打开课堂记录") { session.revealLogs() }
+        Button("打开会话记录") { session.revealLogs() }
         Button("回听录音…") { session.showSettings(.records) }
-        Button("AI 追课",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil)
+        Button("AI 接续",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil)
         Button("重置字幕位置") { session.overlay?.resetPosition() }
         Toggle("字幕鼠标穿透",isOn:$session.passthrough)
         Divider()

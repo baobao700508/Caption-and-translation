@@ -33,7 +33,7 @@ struct RecordingConfirmation:ViewModifier {
                 session.toggleRecording()
             }
         } message: {
-            Text("结束后将停止收音、翻译和字幕更新，已有字幕与课堂日志保留。")
+            Text("结束后将停止收音、翻译和字幕更新，已有字幕与会话日志保留。")
         }
     }
 }

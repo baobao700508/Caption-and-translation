@@ -8,7 +8,7 @@ struct LocalModelsSettings:View {
     var body:some View {
         Group {
             Section("按需下载") {
-                Text("App 不附带 SaT 和 Whisper 模型。不使用本地功能时无需下载；下载准备完成后可以离线运行，不会在课堂中临时安装依赖。")
+                Text("App 不附带 SaT 和 Whisper 模型。不使用本地功能时无需下载；下载准备完成后可以离线运行，不会在使用中临时安装依赖。")
                     .font(.callout)
                 Text("文件保存在用户资料目录，更新或移动 App 不会重复下载。SaT 的 Python 与依赖由 App 独立管理，不修改系统环境。")
                     .font(.caption).foregroundStyle(.secondary)

@@ -19,6 +19,12 @@ func XCTAssertLessThan<T: Comparable>(_ lhs: T, _ rhs: T, file: StaticString = #
         }
         let checks = PipelineChecks()
         let cases: [(String, () async throws -> Void)] = [
+            ("CPA只读本机client配置、不读钥匙串，拒绝发往远程地址", { try checks.testCPAUsesOnlyLocalClientConfiguration() }),
+            ("AI关闭与重开不自动补，手动同时补正文和索引", { try await checks.testAIRecordDisabledReenableAndManualBackfill() }),
+            ("AI失败重试去重，缺失与损坏索引只修复不重复调用", { try await checks.testAIRecordFailureRetryAndIndexOnlyRepair() }),
+            ("AI索引写入失败后使用缓存摘要，不重复付费", { try await checks.testAIRecordProjectionFailureUsesCachedSummary() }),
+            ("AI关闭并重开后拒绝旧任务的迟到结果", { try await checks.testAIRecordDisableInFlightRejectsLateResult() }),
+            ("精简历史Markdown、正文hash与长记录分块完整性", { try checks.testAIRecordCompactLegacyAndLongInput() }),
             ("本地模型未完成下载不能标记可用，自定义环境保留", { try checks.testModelReadinessRejectsIncompleteDownloads() }),
             ("取消SaT环境准备会终止安装进程，不能继续发布完成标记", { try await checks.testSaTPreparationCancellationStopsWorker() }),
             ("旧JEV与聊天配置迁移SaT，删除整理云端地址和凭据字段", { try checks.testSaTOnlyMigrationDropsCloudConfiguration() }),

@@ -54,7 +54,7 @@ struct PreferencesView: View {
         case .appearance: return "调整字幕内容、阅读大小与浮窗操作。"
         case .audio: return "应用内自动处理声音，可按输入设备调整。"
         case .models: return "按需下载模型及完整运行环境，准备好后再开始记录。"
-        case .records: return "查看课堂日志位置与当前服务连接。"
+        case .records: return "查看会话日志位置与当前服务连接。"
         }
     }
     @ViewBuilder private var sectionContent:some View {
@@ -204,15 +204,16 @@ struct PreferencesView: View {
     }
     private var recordSettings:some View {
         Group {
-            Section("课堂记录") {
+            Section("会话记录") {
                 Text(session.currentDirectory?.path ?? session.config.logDirectory).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                 HStack {
                     Button("打开日志目录",action:session.revealLogs)
                     Button("更改保存位置…",action:session.chooseLogDirectory).disabled(session.running || session.busy)
                 }
-                Button("复制 AI 追课提示",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil)
+                Button("复制 AI 接续提示",action:session.copyCatchUpPrompt).disabled(session.currentDirectory == nil)
                 Text("开始后持续保存，收起字幕不影响记录。AI 可随时读取 live.md；整场内容保存在 transcript.md。更改保存位置需先结束记录。").font(.caption).foregroundStyle(.secondary)
             }
+            AIRecordSettings(controller:session.aiRecords,root:URL(fileURLWithPath:(session.config.logDirectory as NSString).expandingTildeInPath))
             Section("录音回听") {
                 Text("每次记录自动保存上传音频，以及降噪前的系统声／麦克风输入。与文字日志存放在同一会话目录。").font(.caption).foregroundStyle(.secondary)
                 if session.running {
@@ -241,7 +242,7 @@ struct PreferencesView: View {
             Section("服务连接") {
                 LabeledContent("当前服务",value:session.connectionSummary)
                 LabeledContent("模型") { Text(session.config.model).font(.caption.monospaced()).textSelection(.enabled) }
-                Text("音频发送至上述服务；课堂文字保存在本机。API Key 不写入日志。").font(.caption).foregroundStyle(.secondary)
+                Text("音频发送至上述服务；会话文字保存在本机。API Key 不写入日志。").font(.caption).foregroundStyle(.secondary)
                 LabeledContent("配置文件") { Text(session.selectedConfigurationURL.lastPathComponent).font(.caption).textSelection(.enabled) }
                 HStack {
                     Button("打开配置…",action:session.openConfiguration)

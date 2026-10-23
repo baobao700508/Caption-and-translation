@@ -98,7 +98,7 @@ import LiveCaptionCore
         let captions = NSMenu(title:"字幕")
         let expand = captions.addItem(withTitle:"展开字幕",action:#selector(expandCaptions),keyEquivalent:"s"); expand.target = self; expand.keyEquivalentModifierMask = [.command,.shift]
         let compact = captions.addItem(withTitle:"收起为迷你控制条",action:#selector(compactCaptions),keyEquivalent:"m"); compact.target = self; compact.keyEquivalentModifierMask = [.command,.shift]
-        let records = captions.addItem(withTitle:"打开课堂记录",action:#selector(openRecords),keyEquivalent:""); records.target = self
+        let records = captions.addItem(withTitle:"打开会话记录",action:#selector(openRecords),keyEquivalent:""); records.target = self
         root.addItem(withTitle:"字幕",action:nil,keyEquivalent:"").submenu = captions
         let windows = NSMenu(title:"窗口")
         windows.addItem(withTitle:"最小化",action:#selector(NSWindow.performMiniaturize(_:)),keyEquivalent:"m")

@@ -32,7 +32,7 @@ public actor SessionLog {
         directory = root.appendingPathComponent(day.string(from: Date())).appendingPathComponent(sessionID)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let path = directory.appendingPathComponent("events.jsonl")
-        guard FileManager.default.createFile(atPath: path.path, contents: nil, attributes: [.posixPermissions: 0o600]) else { throw CaptionError.message("无法创建课堂日志") }
+        guard FileManager.default.createFile(atPath: path.path, contents: nil, attributes: [.posixPermissions: 0o600]) else { throw CaptionError.message("无法创建会话日志") }
         handle = try FileHandle(forWritingTo: path)
         audioArchive = try AudioArchive(sessionDirectory: directory)
     }
@@ -135,7 +135,7 @@ public actor SessionLog {
     private var snapshotFailure: String?
     private func scheduledSnapshot() {
         snapshotTask = nil
-        do { try snapshot() } catch { snapshotFailure = "课堂快照写入失败" }
+        do { try snapshot() } catch { snapshotFailure = "记录快照写入失败" }
     }
     public func checkHealth() throws { if let failure = snapshotFailure { throw CaptionError.message(failure) } }
     public func flush() throws { guard !closed else { return }; try audioArchive.flush(); snapshotTask?.cancel(); snapshotTask = nil; try snapshot(); try handle.synchronize();try reflowHandle?.synchronize() }
@@ -148,18 +148,16 @@ public actor SessionLog {
         guard !closed else { return }
         snapshotSequence = sequence
         let now = Date()
-        let header = "# 课堂记录\n\n会话：\(sessionID)\n\n状态：\(state)；活动：\(active)；线路：\(configuration.pipeline.rawValue)\n\n更新时间：\(Self.timestamp(now))；snapshot_sequence：\(snapshotSequence)\n\n最近文字：\(lastText.map { Self.timestamp($0) } ?? "尚无文字")\n\n时间为本地接收时间（UTC）；模型音频 offset 仅在可靠时单独记录。课堂文字是识别结果。\n\n"
+        let info = "\(Self.timestamp(started)) · \(active ? "记录中" : "已结束") · 时间戳为本机收字时间（UTC）\n记录 ID：\(sessionID) · 更新：\(Self.timestamp(now))\n<!-- snapshot_sequence: \(snapshotSequence) -->" + (state == "stopped_tail_incomplete" ? "\n> 末段可能不完整。" : "")
         func render(since: Date?) -> String {
             var entries: [(Date, String)] = transcript.segments.filter { since == nil || $0.receivedAt >= since! }.map { s in
-                let status = s.finality == .interim ? "识别中" : (s.finality == .unconfirmed ? "未确认" : (s.finality == .final ? "识别定稿" : "识别文字"))
-                let label = s.track == "source" ? "原文" : "译文"
-                return (s.receivedAt, "[\(Self.timestamp(s.receivedAt))] \(label) · \(status) · \(s.pipeline.rawValue) · connection \(s.epoch)\n\n\(s.text)\n\n")
+                return (s.receivedAt,SessionMarkdown.entry(time:s.receivedAt,track:s.track,finality:s.finality,text:s.text))
             }
-            entries += notices.filter { since == nil || $0.0 >= since! }.map { ($0.0, "> [\(Self.timestamp($0.0))] \($0.1)\n\n") }
+            entries += notices.filter { since == nil || $0.0 >= since! }.map { ($0.0, "> [\(SessionMarkdown.shortTime($0.0))] \($0.1)\n\n") }
             return entries.sorted { $0.0 < $1.0 }.map(\.1).joined()
         }
-        try atomic(Data((header + render(since: nil)).utf8), at: directory.appendingPathComponent("transcript.md"))
-        try atomic(Data((header + "最近十分钟；更早内容见 transcript.md。\n\n" + render(since: now.addingTimeInterval(-600))).utf8), at: directory.appendingPathComponent("live.md"))
+        try atomic(Data(SessionMarkdown.document(body:render(since:nil),info:info).utf8), at: directory.appendingPathComponent("transcript.md"))
+        try atomic(Data(SessionMarkdown.document(body:render(since:now.addingTimeInterval(-600)),info:info+"\n最近十分钟；完整记录见 transcript.md。").utf8), at: directory.appendingPathComponent("live.md"))
         var meta = configuration.safeMetadata
         meta.merge(["session_id": sessionID, "started_at": Self.timestamp(started), "active": active, "state": state,
                     "updated_at": Self.timestamp(now), "owner_pid": ProcessInfo.processInfo.processIdentifier, "connection_count": configs.keys.max() ?? 0, "active_connection_epoch":epoch, "written_sequence": sequence, "snapshot_sequence": snapshotSequence]) { _, n in n }

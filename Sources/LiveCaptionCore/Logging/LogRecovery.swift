@@ -43,15 +43,16 @@ public enum LogRecovery {
             "event_type":"session.recovered","received_at":now,"tail_incomplete":true,"message":"应用曾异常中止；末段可能不完整，按完整事件行恢复"]
         var row = try JSONSerialization.data(withJSONObject:recovery,options:.sortedKeys); row.append(10)
         let file = try FileHandle(forWritingTo:eventsURL); try file.seekToEnd(); try file.write(contentsOf:row); try file.synchronize(); try file.close()
-        let header = "# 课堂记录\n\n会话：\(sessionID)\n\n状态：异常中止后恢复；活动：false\n\n恢复时间：\(now)；snapshot_sequence：\(lastSequence+1)\n\n> 应用曾异常中止，末段可能不完整。时间为本地接收时间。\n\n"
+        let info = "恢复于 \(now) · 已结束 · 记录 ID：\(sessionID)\n> 应用曾异常中止，末段可能不完整。时间为本机收字时间（UTC）。\n<!-- snapshot_sequence: \(lastSequence+1) -->"
         let body = order.compactMap { id -> String? in
             guard let s = segments[id], let text = s["text"] as? String else { return nil }
-            let finality = s["finality"] as? String == "final" ? "识别定稿" : "未确认"
-            let track = s["track"] as? String == "translation" ? "译文" : "原文"
-            return "[\(s["received_at"] as? String ?? "时间未知")] \(track) · \(finality)\n\n\(text)\n\n"
+            let finality = s["finality"] as? String == "final" ? TextFinality.final : .unconfirmed
+            let formatter=ISO8601DateFormatter();formatter.formatOptions=[.withInternetDateTime,.withFractionalSeconds]
+            let time=(s["received_at"] as? String).flatMap { formatter.date(from:$0) } ?? Date()
+            return SessionMarkdown.entry(time:time,track:s["track"] as? String ?? "source",finality:finality,text:text)
         }.joined()
-        try Data((header+body).utf8).write(to:directory.appendingPathComponent("transcript.md"),options:.atomic)
-        try Data((header+"会话已停止；以下为恢复预览（正文最后 12000 字符），完整历史见 transcript.md。\n\n"+String(body.suffix(12000))).utf8).write(to:directory.appendingPathComponent("live.md"),options:.atomic)
+        try Data(SessionMarkdown.document(body:body,info:info).utf8).write(to:directory.appendingPathComponent("transcript.md"),options:.atomic)
+        try Data(SessionMarkdown.document(body:String(body.suffix(12000)),info:info+"\n恢复预览；完整记录见 transcript.md。").utf8).write(to:directory.appendingPathComponent("live.md"),options:.atomic)
         for key in ["active","state","updated_at","written_sequence","snapshot_sequence"] {
             let value: Any
             switch key { case "active":value=false;case "state":value="recovered_after_crash";case "updated_at":value=now;default:value=lastSequence+1 }
