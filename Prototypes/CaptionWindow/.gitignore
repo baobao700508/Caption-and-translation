@@ -1,0 +1,4 @@
+.build/
+Outputs/
+.DS_Store
+.baseline-status.local
