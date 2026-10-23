@@ -53,7 +53,8 @@ private struct FloatingIconButton: View {
 struct CaptionView: View {
     @ObservedObject var session: AppSession
     @State private var hovering = false
-    @State private var confirmingStop = false
+    private enum Confirmation { case stop,quit }
+    @State private var confirmation:Confirmation?
     private var controlsVisible:Bool { hovering || session.sessionStartedAt == nil }
     private var statusColor:Color { session.errorMessage != nil ? .orange : (session.running ? .teal : .gray) }
     var body: some View {
@@ -100,7 +101,18 @@ struct CaptionView: View {
             .onHover { hovering=$0 }
             .onTapGesture { hovering=true }
             .contextMenu { moreActions }
-            .modifier(RecordingConfirmation(session:session,isPresented:$confirmingStop))
+            .alert(confirmation == .quit ? "退出 LiveCaption？":"结束本次记录？",
+                isPresented:Binding(get:{confirmation != nil},set:{if !$0 { confirmation=nil }}),presenting:confirmation) { action in
+                Button(action == .quit ? "取消":"继续记录",role:.cancel) {}
+                Button(action == .quit ? "结束记录并退出":"结束记录",role:.destructive) {
+                    if action == .quit {
+                        // The application delegate waits for session.stop() before terminating.
+                        NSApp.terminate(nil)
+                    } else if session.running && session.canToggleRecording { session.toggleRecording() }
+                }
+            } message: { action in
+                Text(action == .quit ? "将先结束当前记录，等待字幕、音频和会话日志收尾完成，再完全退出程序。":"结束后将停止收音、翻译和字幕更新，已有字幕与会话日志保留。")
+            }
             .foregroundStyle(.white.opacity(0.8)).preferredColorScheme(.dark)
     }
     @ViewBuilder private var moreActions:some View {
@@ -120,9 +132,12 @@ struct CaptionView: View {
         Toggle("字幕鼠标穿透",isOn:$session.passthrough)
         Divider()
         Button(session.primaryActionTitle) {
-            if session.running { confirmingStop=true } else { session.toggleRecording() }
+            if session.running { confirmation = .stop } else { session.toggleRecording() }
         }.disabled(!session.canToggleRecording)
         Button("隐藏到菜单栏（记录继续）") { session.overlay?.hide() }
+        Divider()
+        Button(role:.destructive) { confirmation = .quit } label: { Text("退出程序…").foregroundStyle(.red) }
+            .accessibilityIdentifier("quit-application")
     }
 }
 struct PassthroughControlsView: View {

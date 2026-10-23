@@ -16,7 +16,18 @@ import LiveCaptionCore
     @Published var configurationLoading = false
     @Published var presentation: CaptionPresentation = .expanded
     @Published var settingsSection: SettingsSection = .session
-    @Published var feedback: String?
+    private var feedbackDismissTask:Task<Void,Never>?
+    @Published var feedback: String? {
+        didSet {
+            feedbackDismissTask?.cancel()
+            guard feedback != nil else { feedbackDismissTask=nil;return }
+            feedbackDismissTask=Task { [weak self] in
+                do { try await Task.sleep(nanoseconds:3_000_000_000) } catch { return }
+                guard !Task.isCancelled else { return }
+                self?.feedback=nil
+            }
+        }
+    }
     @Published var sessionStartedAt: Date?
     @Published var sessionEndedAt: Date?
     @Published var lastCaptionAt: Date?

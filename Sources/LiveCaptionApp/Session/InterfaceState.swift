@@ -101,9 +101,5 @@ extension AppSession {
     }
     func announce(_ message: String) {
         feedback = message
-        Task { [weak self] in
-            try? await Task.sleep(nanoseconds:3_000_000_000)
-            if self?.feedback == message { self?.feedback = nil }
-        }
     }
 }

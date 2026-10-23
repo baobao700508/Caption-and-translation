@@ -13,6 +13,7 @@ import LiveCaptionCore
 }
 @MainActor final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     let session = AppSession.shared
+    private var terminationPending=false
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         installMenus()
@@ -120,9 +121,16 @@ import LiveCaptionCore
         session.showSettings(); return true
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !terminationPending else { return .terminateLater }
         session.localModels.cancelAll()
         guard session.running else { return .terminateNow }
-        Task { await session.stop(); NSApp.reply(toApplicationShouldTerminate: true) }
+        terminationPending=true
+        Task {
+            await session.stop()
+            // A stop already in progress returns immediately; wait for its owner too.
+            while session.running { try? await Task.sleep(nanoseconds:50_000_000) }
+            NSApp.reply(toApplicationShouldTerminate:true)
+        }
         return .terminateLater
     }
 }
