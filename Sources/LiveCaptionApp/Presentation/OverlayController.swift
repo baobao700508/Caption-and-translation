@@ -2,6 +2,10 @@ import SwiftUI
 import AppKit
 import LiveCaptionCore
 
+@MainActor private final class CaptionPanel:NSPanel {
+    override var canBecomeKey:Bool { true }
+}
+
 @MainActor final class OverlayController: NSObject, NSWindowDelegate {
     private let panel: NSPanel
     private let passthroughControls:NSPanel
@@ -9,12 +13,13 @@ import LiveCaptionCore
     private var expandedFrame: NSRect
     init(session:AppSession) {
         self.session = session
-        panel = NSPanel(contentRect:NSRect(x:0,y:0,width:820,height:300),styleMask:[.borderless,.nonactivatingPanel,.resizable],backing:.buffered,defer:false)
+        panel = CaptionPanel(contentRect:NSRect(x:0,y:0,width:820,height:180),styleMask:[.borderless,.nonactivatingPanel,.resizable],backing:.buffered,defer:false)
         panel.title = "LiveCaption 字幕"
+        panel.acceptsMouseMovedEvents = true
         panel.level = .floating; panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces,.fullScreenAuxiliary,.stationary]
         panel.isMovableByWindowBackground = true; panel.hidesOnDeactivate = false
-        panel.minSize = NSSize(width:560,height:240)
+        panel.minSize = NSSize(width:560,height:140)
         panel.contentView = NSHostingView(rootView:OverlayRootView(session:session))
         passthroughControls = NSPanel(contentRect:NSRect(x:0,y:0,width:430,height:40),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
         passthroughControls.title = "LiveCaption 字幕控制"
@@ -45,7 +50,7 @@ import LiveCaptionCore
             expandedFrame.origin = NSPoint(x:current.minX,y:current.maxY-expandedFrame.height)
         } else if session.presentation == .expanded && panel.isVisible { expandedFrame = panel.frame }
         session.presentation = .expanded; panel.styleMask.insert(.resizable)
-        panel.minSize = NSSize(width:560,height:240)
+        panel.minSize = NSSize(width:560,height:140)
         panel.setFrame(expandedFrame,display:true); keepOnScreen()
         panel.ignoresMouseEvents = session.passthrough; panel.orderFrontRegardless()
         syncPassthroughControls()

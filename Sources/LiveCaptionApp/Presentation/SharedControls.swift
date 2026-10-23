@@ -21,13 +21,43 @@ struct SessionDuration: View {
         }
     }
 }
+// 所有用户发起的结束按钮共用确认行为；后台收尾与重连不经过此弹窗。
+struct RecordingConfirmation:ViewModifier {
+    @ObservedObject var session:AppSession
+    @Binding var isPresented:Bool
+    func body(content:Content)->some View {
+        content.alert("结束本次记录？",isPresented:$isPresented) {
+            Button("继续记录",role:.cancel) {}
+            Button("结束记录",role:.destructive) {
+                guard session.running,session.canToggleRecording else { return }
+                session.toggleRecording()
+            }
+        } message: {
+            Text("结束后将停止收音、翻译和字幕更新，已有字幕与课堂日志保留。")
+        }
+    }
+}
 struct RecordingButton: View {
     @ObservedObject var session: AppSession
+    var iconOnly = false
+    @State private var confirmingStop = false
     var body: some View {
-        Button(action:session.toggleRecording) {
-            Label(session.primaryActionTitle,systemImage:session.running ? "stop.fill" : "record.circle")
-        }.buttonStyle(.borderedProminent).tint(session.running ? .orange : .teal)
-            .disabled(!session.canToggleRecording).fixedSize().accessibilityIdentifier("recording-toggle")
+        Group {
+            if iconOnly {
+                Button(action:requestAction) {
+                    Image(systemName:session.running ? "stop.fill":"play.fill").frame(width:24,height:24)
+                }.buttonStyle(.plain).help(session.primaryActionTitle)
+            } else {
+                Button(action:requestAction) {
+                    Label(session.primaryActionTitle,systemImage:session.running ? "stop.fill":"record.circle")
+                }.buttonStyle(.borderedProminent).tint(session.running ? .orange:.teal).fixedSize()
+            }
+        }.disabled(!session.canToggleRecording).accessibilityLabel(session.primaryActionTitle)
+            .accessibilityIdentifier("recording-toggle")
+            .modifier(RecordingConfirmation(session:session,isPresented:$confirmingStop))
+    }
+    private func requestAction() {
+        if session.running { confirmingStop=true } else { session.toggleRecording() }
     }
 }
 struct ModeSelector: View {

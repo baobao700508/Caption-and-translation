@@ -33,7 +33,7 @@ struct CaptionTranscriptView: View {
                             Color.clear.frame(height:1).id("caption-bottom")
                         }.padding(.horizontal,18).padding(.vertical,12)
                             .background(CaptionScrollObserver(onUserScroll:{ atBottom in session.followsLatestCaption=atBottom }))
-                    }.defaultScrollAnchor(.bottom)
+                    }.scrollIndicators(.hidden).defaultScrollAnchor(.bottom)
                     if !session.followsLatestCaption {
                         HStack {
                             Text("正在查看前文").foregroundStyle(.secondary)
@@ -72,22 +72,22 @@ private struct CaptionParagraphView:View {
     var body:some View {
         VStack(alignment:.leading,spacing:7) {
             if showSource && !row.source.isEmpty {
-                Text(row.source).font(.system(size:showTranslation ? fontSize*0.86:fontSize,weight:.medium))
-                    .foregroundStyle(.white.opacity(showTranslation ? 0.75:1))
-                    .fixedSize(horizontal:false,vertical:true)
+                Text(row.source).font(.system(size:showTranslation ? fontSize*0.73:fontSize,weight:.regular))
+                    .foregroundStyle(.white.opacity(showTranslation ? 0.55:1))
+                    .lineSpacing(3).fixedSize(horizontal:false,vertical:true)
                     .contextMenu { Button("复制本段原文") { copy(row.source) } }
                     .frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("source-caption")
             }
             if showTranslation {
                 if !row.translation.isEmpty {
                     if row.unlinkedTranslation { Text("译文 · 暂无对应原文").font(.caption2).foregroundStyle(.secondary) }
-                    Text(row.translation).font(.system(size:fontSize,weight:.semibold)).foregroundStyle(.white)
+                    Text(row.translation).font(.system(size:fontSize,weight:.medium)).foregroundStyle(.white).lineSpacing(5)
                         .fixedSize(horizontal:false,vertical:true)
                         .contextMenu { Button("复制本段译文") { copy(row.translation) } }
                         .frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("translation-caption")
                 } else if !row.source.isEmpty { Text("等待本段译文…").font(.caption).foregroundStyle(.secondary) }
             }
-        }.padding(.bottom,12).overlay(alignment:.bottom) { Divider().overlay(.white.opacity(0.1)) }
+        }
     }
     private func copy(_ text:String) {
         NSPasteboard.general.clearContents();NSPasteboard.general.setString(text,forType:.string)

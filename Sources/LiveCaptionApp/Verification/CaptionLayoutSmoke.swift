@@ -98,7 +98,7 @@ import LiveCaptionCore
         let long=await capture("long-paragraph")
         checks["long_paragraph_has_no_expand_or_ellipsis"] = !long.contains("展开本段") && !long.contains("…")
         checks["long_paragraph_full_text_preserved"] = session.captionParagraphs.last?.source == longSource && session.captionParagraphs.last?.translation == longTranslation
-        window.setContentSize(NSSize(width:560,height:240))
+        window.setContentSize(NSSize(width:560,height:140))
         let compact=await capture("small-window")
         checks["small_window_keeps_full_scrollable_text"] = !compact.contains("展开本段") && session.captionParagraphs.last?.source == longSource && session.captionParagraphs.last?.translation == longTranslation
         let args=CommandLine.arguments

@@ -6,6 +6,7 @@ import Combine
 @MainActor final class MenuBarController: NSObject {
     private let item = NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength)
     private let popover = NSPopover()
+    private var detachedPanel:NSPanel?
     private weak var session: AppSession?
     private var observation: AnyCancellable?
     init(session: AppSession) {
@@ -35,12 +36,30 @@ import Combine
         if popover.isShown { close() } else { show() }
     }
     func show() {
+        detachedPanel?.orderOut(nil)
         guard let button = item.button else { return }
         popover.show(relativeTo:button.bounds,of:button,preferredEdge:.minY)
         popover.contentViewController?.view.window?.makeKey()
     }
-    func close() { popover.performClose(nil) }
-    var isShown:Bool { popover.isShown }
+    // 从字幕窗打开时不锚定 NSStatusItem，避免刘海屏挤出图标后无法操作。
+    func showDetached() {
+        close()
+        guard let session else { return }
+        if detachedPanel == nil {
+            let panel=NSPanel(contentRect:NSRect(x:0,y:0,width:380,height:300),styleMask:[.titled,.closable,.nonactivatingPanel],backing:.buffered,defer:false)
+            panel.title="LiveCaption 控制面板";panel.isReleasedWhenClosed=false
+            panel.level = .floating;panel.hidesOnDeactivate=false
+            panel.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary]
+            panel.contentView=NSHostingView(rootView:QuickControlsView(session:session))
+            panel.center();detachedPanel=panel
+        }
+        guard let panel=detachedPanel else { return }
+        if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(panel.frame) }) { panel.center() }
+        panel.makeKeyAndOrderFront(nil)
+    }
+    func close() { popover.performClose(nil);detachedPanel?.orderOut(nil) }
+    var isShown:Bool { popover.isShown || detachedPanel?.isVisible == true }
+    var detachedIsVisible:Bool { detachedPanel?.isVisible == true }
     var diagnostics:[String:Any] {
         ["item_visible":item.isVisible,"button_present":item.button != nil,
          "button_frame":item.button.map { NSStringFromRect($0.frame) } ?? "none",
