@@ -249,10 +249,11 @@ extension AppSession {
     }
     func saveCloudCredentials() async {
         let snapshot=config
+        guard snapshot.provider != .whisperKit,!snapshot.activeAPIKey.isEmpty else {
+            errorMessage="请先填写当前云服务的 API Key。";return
+        }
         let saved=await Task.detached { ()->Bool in
-            if !snapshot.apiKey.isEmpty && !KeyStorage.save(snapshot.apiKey) { return false }
-            if !snapshot.bailianAPIKey.isEmpty && !KeyStorage.save(snapshot.bailianAPIKey,provider:.bailian) { return false }
-            return true
+            KeyStorage.save(snapshot.activeAPIKey,provider:snapshot.provider)
         }.value
         guard saved else { errorMessage="钥匙串未能保存凭据，请检查系统授权后重试。";return }
         do {

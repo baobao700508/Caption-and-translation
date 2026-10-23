@@ -12,8 +12,8 @@ actor CaptionReflowSettingsWriter {
             throw CaptionError.message("配置文件格式无效")
         }
         for field in ["pipeline","translationMode","translateProvider","transcribeProvider","bailianRegion","bailianWorkspaceID"] { document[field]=current[field] }
-        if !config.apiKey.isEmpty { document["apiKey"]="" }
-        if !config.bailianAPIKey.isEmpty { document["bailianAPIKey"]="" }
+        if config.provider == .google && !config.apiKey.isEmpty { document["apiKey"]="" }
+        if config.provider == .bailian && !config.bailianAPIKey.isEmpty { document["bailianAPIKey"]="" }
         try JSONSerialization.data(withJSONObject:document,options:[.prettyPrinted,.sortedKeys,.withoutEscapingSlashes]).write(to:url,options:.atomic)
         try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:url.path)
         return (try? url.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate) ?? Date()

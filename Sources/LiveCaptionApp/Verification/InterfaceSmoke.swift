@@ -111,13 +111,13 @@ import LiveCaptionCore
         do {
             let connectionFile=onboardingRoot.appendingPathComponent("connection.json")
             try Data(#"{"captionReflow":{"enabled":false,"engine":"sat"},"extensionField":"preserved","apiKey":"old-placeholder"}"#.utf8).write(to:connectionFile)
-            var connection=Configuration();connection.bailianRegion = .beijing;connection.bailianWorkspaceID="test-workspace"
+            var connection=Configuration();connection.pipeline = .translate;connection.bailianRegion = .beijing;connection.bailianWorkspaceID="test-workspace"
             connection.apiKey="test-key-not-real";connection.bailianAPIKey="test-bailian-key-not-real"
             _ = try await CaptionReflowSettingsWriter().saveConnection(connection,url:connectionFile)
             let document=try JSONSerialization.jsonObject(with:Data(contentsOf:connectionFile)) as? [String:Any]
             results["connection_save_preserves_other_settings"] = document?["extensionField"] as? String == "preserved" && (document?["captionReflow"] as? [String:Any])?["enabled"] as? Bool == false
-            results["connection_save_keeps_keys_out_of_file"] = document?["apiKey"] as? String == "" && document?["bailianAPIKey"] as? String == "" && document?["bailianRegion"] as? String == "beijing"
-        } catch { results["connection_save_preserves_other_settings"]=false;results["connection_save_keeps_keys_out_of_file"]=false }
+            results["connection_save_updates_only_selected_credential"] = document?["apiKey"] as? String == "old-placeholder" && document?["bailianAPIKey"] as? String == "" && document?["bailianRegion"] as? String == "beijing"
+        } catch { results["connection_save_preserves_other_settings"]=false;results["connection_save_updates_only_selected_credential"]=false }
         newcomer.preferencesWindow?.close()
         session.preferencesWindow?.close()
         let report:[String:Any] = ["scope":"实际AppKit窗口控制器与界面状态检查；不启动采集或调用云模型，不代替截图与点击验收","tested_at":SessionLog.timestamp(),"menu_bar_diagnostics":session.menuBar?.diagnostics as Any? ?? [:],"checks":results,"success":results.values.allSatisfy{$0}]
