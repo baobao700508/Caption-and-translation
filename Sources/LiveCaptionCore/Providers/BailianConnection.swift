@@ -1,7 +1,6 @@
 import Foundation
 import CoreFoundation
 
-/// Qwen 3.8 protocol. In particular, 3.5 snapshot events must not be treated as 3.8 deltas.
 public actor BailianConnection: ProviderConnection {
     private let configuration: Configuration
     private let onEvent: (ProviderEvent) async -> Void

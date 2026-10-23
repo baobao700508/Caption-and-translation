@@ -57,5 +57,3 @@ struct SessionNotice: View {
         }
     }
 }
-
-/// The menu bar is a quick control surface; detailed preferences live in their own window.

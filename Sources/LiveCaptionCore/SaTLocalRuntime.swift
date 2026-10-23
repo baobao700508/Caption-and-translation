@@ -1,5 +1,7 @@
 import Foundation
 
+/// One persistent local worker, serialized on its own queue. No pipe I/O runs on the main actor.
+/// Cancellation/timeout kills that worker so a stale response cannot enter the next request.
 public final class SaTLocalRuntime: @unchecked Sendable {
     public static let shared = SaTLocalRuntime()
     private let queue=DispatchQueue(label:"local.livecaption.sat",qos:.utility)

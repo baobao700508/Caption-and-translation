@@ -59,5 +59,3 @@ private final class WebSocketWrite: @unchecked Sendable {
         guard let continuation else { return false }; continuation.resume(with:result); return true
     }
 }
-
-

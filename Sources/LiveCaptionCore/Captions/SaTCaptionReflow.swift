@@ -82,6 +82,3 @@ public enum SaTCaptionReflow {
         return String(decoding:try JSONSerialization.data(withJSONObject:["groups":groups]),as:UTF8.self)
     }
 }
-
-/// One persistent local worker, serialized on its own queue. No pipe I/O runs on the main actor.
-/// Cancellation/timeout kills that worker so a stale response cannot enter the next request.

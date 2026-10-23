@@ -1,6 +1,5 @@
 import Foundation
 
-/// Old engine fields are ignored when decoding; SaT is the only supported route.
 public struct CaptionReflowInput:Sendable {
     public let source:[String]
     public let translation:[String]
@@ -61,4 +60,3 @@ public struct CaptionReflowInput:Sendable {
         return rows
     }
 }
-

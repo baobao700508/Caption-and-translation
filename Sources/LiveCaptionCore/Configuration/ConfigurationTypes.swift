@@ -32,4 +32,3 @@ public enum CaptionError: LocalizedError {
     case message(String)
     public var errorDescription: String? { if case .message(let s) = self { return s }; return nil }
 }
-

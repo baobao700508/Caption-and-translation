@@ -70,4 +70,3 @@ final class SystemCapture: @unchecked Sendable {
     }
     deinit { stopNow() }
 }
-

@@ -7,10 +7,22 @@
   "bailianTranslateModel": "qwen3.8-livetranslate-flash-realtime",
   "bailianTurnDetection": "server_vad",
   "bailianTransport": "websocket",
-  "playbackCatchUp": {"enabled":true,"enterSeconds":1.5,"exitSeconds":0.75,"maximumRate":1.5,"recoveryWindowSeconds":20,"maximumBufferedSeconds":120},
+  "playbackCatchUp": {
+    "enabled": true,
+    "enterSeconds": 1.5,
+    "exitSeconds": 0.75,
+    "maximumRate": 1.5,
+    "recoveryWindowSeconds": 20,
+    "maximumBufferedSeconds": 120
+  },
   "apiKey": "YOUR_GOOGLE_KEY_FOR_TRANSCRIBE",
   "transcribeProvider": "google",
-  "localWhisper": {"model":"openai_whisper-large-v3-v20240930_turbo","language":"en","modelDirectory":"","updateIntervalSeconds":0.8},
+  "localWhisper": {
+    "model": "openai_whisper-large-v3-v20240930_turbo",
+    "language": "en",
+    "modelDirectory": "",
+    "updateIntervalSeconds": 0.8
+  },
   "transcribeModel": "gemini-3.5-transcribe-live",
   "translationMode": "subtitles",
   "subtitleLayout": "bilingual",
@@ -22,25 +34,13 @@
   "microphoneVoiceProcessing": true,
   "captionReflow": {
     "enabled": false,
-    "baseURL": "http://127.0.0.1:8317/v1",
-    "apiKey": "",
-    "model": "gpt-6-luna",
-    "reasoningEffort": "",
-    "timeoutSeconds": 12,
-    "maxRetries": 1,
-    "engine": "jev",
-    "jev": {
-      "endpoint": "https://openrouter.ai/api/alpha/decisions",
-      "apiKey": "YOUR_OPENROUTER_KEY",
-      "model": "typesafe/jev-1.14",
-      "promptVersion": "bc-v5",
-      "timeoutSeconds": 6,
-      "alignmentProbability": 0.8,
-      "completenessProbability": 0.75,
-      "boundaryProbability": 0.65,
-      "cutPenalty": 1.5
+    "engine": "sat",
+    "sat": {
+      "model": "sat-3l",
+      "pythonExecutable": "~/Library/Application Support/LiveCaption/SaT/runtime/bin/python3",
+      "paragraphThreshold": 0.5,
+      "minimumCharacters": 120,
+      "timeoutSeconds": 120
     }
-  },
-  "bailianTurnDetection": "speaker_detection",
-  "_说明_bailianTurnDetection": "百炼两种翻译模式共用 speaker_detection（官方默认，threshold 固定 0.5）；server_vad 仅保留作兼容排查。字幕与日志始终实时更新，分段由后台重排完成。"
+  }
 }

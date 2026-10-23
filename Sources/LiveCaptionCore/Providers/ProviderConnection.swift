@@ -35,5 +35,3 @@ public enum Connections {
     }
 
 }
-
-/// Keeps the WebSocket lifecycle testable without sending credentials or audio to a cloud service.

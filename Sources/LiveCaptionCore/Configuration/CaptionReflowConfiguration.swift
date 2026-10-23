@@ -20,4 +20,3 @@ public struct CaptionReflowConfiguration:Codable,Equatable,Sendable {
     }
     public func validate() throws { try sat.validate() }
 }
-

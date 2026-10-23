@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import LiveCaptionCore
 
+/// The menu bar is a quick control surface; detailed preferences live in their own window.
 struct QuickControlsView: View {
     @ObservedObject var session: AppSession
     var body: some View {
@@ -142,4 +143,3 @@ struct OverlayRootView: View {
         }.environment(\.controlActiveState,.active)
     }
 }
-

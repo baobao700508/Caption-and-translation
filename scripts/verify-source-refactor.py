@@ -2,7 +2,6 @@
 """将当前 Sources 与指定 Git 基线做 Swift 语法树及桥接源码对照。"""
 import argparse
 import json
-import os
 from pathlib import Path
 import subprocess
 import tempfile

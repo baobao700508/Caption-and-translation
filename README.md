@@ -1,143 +1,244 @@
-# LiveCaption
+# LiveCaption · Caption and translation
 
-正式使用入口统一为桌面 `LiveCaption.app`，指向本工程 `dist/LiveCaption.app`。源码版本只在 `Resources/Info.plist` 定义，实际发布版本、程序校验值与检查记录见 `Releases/current.json`。发布与归档规则见[版本管理与发布](Documentation/版本管理与发布.md)。真实课堂的 WebSocket／WebRTC 对照、返回延迟及播放追赶验证见[课堂测试报告](TestResults/sg-classroom-15m-20261022/report.md)。早期断线与 JEV 评估见[历史验证报告](Documentation/断线定位与JEV评估.md)。
+macOS 原生实时字幕、原文转写与同声传译工具。以电脑播放声音为主要音源，也可加入麦克风；字幕显示在浮窗中，收起为迷你条或隐藏到菜单栏后，课堂记录继续。
 
-macOS 原生菜单栏课堂字幕工具。电脑播放声音为主音源，可选加入麦克风；字幕浮于屏幕，收起窗口后仍继续记录。
-
-| 线路 | 模型 | 输出 |
+| 使用模式 | 处理线路 | 输出 |
 | --- | --- | --- |
-| Transcribe | Google `gemini-3.5-transcribe-live` 或本地 WhisperKit | 原文字幕、实时日志 |
-| Translate · 同译 | 百炼 `qwen3.8-livetranslate-flash-realtime` | 可选原文、译文或双语字幕、日志 |
-| Translate · 同传 | 同上 | 字幕、译音、日志 |
+| 原文转写 | Google 在线转写，或 WhisperKit 本机识别 | 原文字幕、日志 |
+| 书面同译 | 百炼 LiveTranslate | 原文和译文字幕、日志；服务端只生成文字 |
+| 同声传译 | 百炼 LiveTranslate | 原文和译文字幕、中文译音、日志 |
 
-百炼书面同译使用 `output_modalities: ["text"]`，服务端不生成译音，也不提交音色或声音克隆设置；同传使用 `["text", "audio"]`、默认音色 `Tina`，显式关闭声音克隆且不提交复刻频率。纯原文记录请选择独立 Transcribe。Google Translate 可通过 `translateProvider: "google"` 保留，但仅允许同声传译；其仅文字配置会在连接前被拒绝，避免生成付费译音后在本机丢弃。`provider.configuration` 日志记录服务回显的 `output_modalities` 和 `audio_output_requested`；仅文字时不记录译音采样率。
+字幕后台整理仅使用 **SaT 本机模型**。关闭“后台整理字幕”时，直接按服务器返回的语音活动检测（VAD）语段显示，中英文按服务端明确的关联配对。JEV 和普通聊天大模型不参与整理。
 
-`bailianTransport` 可设为 `websocket` 或 `webrtc`；未配置的旧文件保留 WebRTC。两条路径都使用相同模型、目标语种和输出模态回显核验，日志记录实际选择。WebSocket 输入 PCM16，WebRTC 输入经 Opus 编码；网络路径不决定是否生成译音。
+## 环境
 
-译音通过 `AVAudioUnitTimePitch` 保音调播放。`playbackCatchUp` 默认启用：待播原速媒体量超过 1.5 秒进入追赶，降到 0.75 秒退出；目标速度为 `1 + (待播秒数 - 0.75) / 20`，最高 1.5 倍，平滑升降。速度只作用于已经收到的播放副本，原始译音和云端到达记录不变。`playback.catch_up` 记录库存、速度、目标和样本数。库存按至多 100 ms 的未播放完 PCM 块计数，含渲染管线，不是物理发声延迟。缓冲安全上限默认 120 秒，超过后明确报错停播并继续保存原音；不再在 5 秒时清空译音。可在配置中设置 `enabled: false` 恢复原速，或调整 `maximumRate`（1–2）等参数。
+- macOS 14.2 或更新系统；当前实机验证环境为 Apple Silicon。
+- Xcode 或兼容的 Swift 工具链及 macOS SDK；包使用 Swift tools 5.10。
+- Python 3.12 或更新版本，用于依赖准备、构建和验证脚本。
+- 启用 SaT 时需要独立的本机 Python 环境；首次使用所选模型需要下载模型。
+- 使用公开录音验证脚本时需要 `ffmpeg`；正常运行应用不依赖 `ffmpeg`。
 
-## 使用
+语音采集、降噪、网络连接和播放使用原生代码。SaT 在本机 Python worker 中推理；WhisperKit 使用 Core ML，本机识别模型在准备完成后才开始接收音频。
 
-1. Translate 填写桌面 `LiveCaption配置.json` 的 `bailianAPIKey`、`bailianWorkspaceID`；`bailianRegion` 默认为 `singapore`，也可填 `beijing`。Key、工作空间与地区必须匹配；工作空间 ID 是 API 地址中的 WorkspaceId，不是空间名称。Transcribe 继续使用原 `apiKey`（Google）。可修改 `logDirectory`。
-2. 打开 `dist/LiveCaption.app`，点击菜单栏字幕图标，再点“开始记录”。应用不在打开时自动采集。
-3. 系统首次请求权限时，允许 LiveCaption 录制系统音频；启用麦克风时另需麦克风权限。
-4. 浮窗顶部的齿轮、收起后的迷你控制条、菜单栏的“设置…”都能打开同一个独立设置窗口；应用激活时可用 `⌘,`。重新打开应用也会调出设置。
-5. “收起字幕”保留迷你条，迷你条可展开字幕、开始／结束、打开设置；“隐藏到菜单栏”在浮窗的更多菜单中，仍可从菜单栏恢复。两种操作都不结束记录。
-6. 设置分为模式与音源、字幕与外观、音频处理、记录与连接；原文／译文／双语只在同译、同传适用。
-7. 设置 → 记录与连接 → 录音回听，可结束记录后直接播放实际上传音频、系统声降噪前和麦克风输入对比轨；也可打开录音文件夹或选择历史录音。新版开始的会话自动保存，旧录音不能补回。
-8. 上课中途点“复制 AI 追课提示”，交给获得日志目录读取权限的 Codex 或其他 AI；可在会话运行中读取，无需等下课。
-
-配置文件保存后可点“重读配置”，或在下一次开始时读取改动。若 macOS 阻止读取桌面，可用“选择配置”选取这个 JSON 文件；选择结果通过文件 bookmark 保留。Google 与百炼 Key 分别导入各自的 Keychain 项；不写入课堂日志或 UserDefaults。桌面文件由用户保管，应用不会擅自清空它。日志目录在会话中途更换时，从下一场会话生效。
-
-## 字幕分段与重排模型
-
-设置 → 字幕与外观 → 字幕智能分段，可选择 JEV、普通大模型或 SaT。普通大模型使用 OpenAI 兼容 Chat Completions，JEV 使用独立判断接口；两者会把文字发送到相应文字服务。SaT 在本机推理，无需整理服务密钥。这些模型只处理已经生成的文字，不替换语音识别或翻译模型。
-
-字幕和原始日志立即更新。JEV 的临时文字保持一个连续尾段，单语等待原文定稿，双语等待明确关联的两轨均定稿；只固定模型确认完整的前缀阅读块。不完整尾句等待后文，后文不重切已固定段落，定稿改字在原位置更新并保留段落身份。SaT 使用独立本地协调器，等待连续 final 前缀后选择切点，双语只在明确关联组之间分段。普通大模型保留自己的临时前缀和尾段接续逻辑。已有内容完整可滚动，不折叠、不用省略号隐藏正文。回看前文时冻结当前排版，点“回到最新”再跟随新字幕。
-
-普通大模型返回普通 JSON 切点，通过提示词说明格式，不使用 `response_format`、JSON Schema 或工具调用。显示文字始终从输入原片段切出，本地拒绝越界、乱序、遗漏或重复覆盖，并逐字节验证两条文字完整一致。这个检查保证不改字，不能保证每个语义配对都正确。请求失败最多重试一次；迟到结果必须仍与原文字节匹配。JEV 从最早的待整理正式前缀开始，以有限窗口处理；未整理部分照常完整显示。模型选择、分数、采用与拒绝原因均进入分段日志。
-
-桌面 JSON 的独立配置如下；`apiKey` 属于文字重排服务，与 Google、百炼的 Key 分开：
-
-```json
-"captionReflow": {
-  "enabled": true,
-  "baseURL": "http://127.0.0.1:8317/v1",
-  "apiKey": "YOUR_TEXT_MODEL_KEY",
-  "model": "gpt-6-luna",
-  "reasoningEffort": "low",
-  "timeoutSeconds": 12,
-  "maxRetries": 1
-}
-```
-
-不支持 `reasoning_effort` 的服务将 `reasoningEffort` 留空即可。API 地址填到 `/v1` 这一层；应用追加 `/chat/completions` 或 `/models`。默认示例关闭重排；本机交付配置已启用 CPA。重排 Key 按 API 地址独立存入 Keychain，桌面配置仍由用户保管。
-
-系统声音可从运行中应用列表选择全部或指定应用。指定应用必须正在播放；采集覆盖其音频 helper，浏览器标签页不视为独立应用。麦克风与译音输出默认跟随系统设备，也可在应用内选择。当前本机开发包未启用 App Sandbox，采用本地 ad-hoc 签名；尚不是 App Store 或已公证分发包。
-
-## 音频处理
-
-- 麦克风启用时自动打开 Apple `AVAudioEngine` Voice Processing，不要求用户手动开“语音突显”。原生处理失败时显式降级为 WebRTC NS；同一路不叠加两个降噪器。
-- 系统声音内嵌 WebRTC APM，默认 Low NS，关闭 AEC 和 AGC。应用内可切为原音旁路；只处理发送给模型的副本。
-- 实时回调将音频写入预分配的 C 原子环形缓冲；重采样、降噪、混音、JSON、网络和日志在回调之外执行。
-- 两路按 host time 对齐、浮点混音、峰值保护，最终以 16 kHz mono PCM16、100 ms 包发送。队列有上限，丢帧与连接中断写入日志。
-- 系统采集排除本应用译音进程；扬声器经空气进入麦克风的回授仍需独立验收。建议组合输入优先使用耳机。
-
-Apple 原生 Voice Processing 可能对其他播放声音执行 ducking，应用设为最低强度并关闭高级 ducking。公开接口没有完全关闭的保证。近讲和远场讲师效果必须分别测量，不能根据 API 能力推断真实识别质量。
-
-## 实时日志
-
-```text
-所选目录/
-  latest.json
-  YYYY-MM-DD/<session_id>/
-    session.json
-    events.jsonl
-    transcript.md
-    live.md
-    caption-layout.json  # 启用重排且成功时的派生排版快照
-    audio/
-      uploaded.wav
-      system-before-ns.wav  # 启用系统声时
-      microphone-input.wav # 启用麦克风时
-      upload-index.jsonl
-      recording.json
-```
-
-`events.jsonl` 追加记录识别假设及修订；`transcript.md` 为整场当前可读结果；`live.md` 为最近十分钟快照，不删除整场历史。Transcribe 的 final 替换 interim，不重复追加。`latest.json` 指向最近会话，含活动状态、更新时间和序号。日志异常会停止采集并给出错误，避免用户误以为课堂仍在完整记录。
-
-`caption-layout.json` 为最新连接代次的派生显示快照，不能代替整场原始日志。重排不覆盖 `transcript.md` 或 `live.md` 的原文；AI 追课仍应优先读取这些持续更新的正文。停止后正在进行的最后一次重排可完成快照写入，下一场会话会清除旧的排版任务。
-
-录音独立保存在 `audio/`；上传 WAV 与发送字节相同，输入轨可用于对照前处理。发送成功不等于服务端消费确认，失败发送及重连缺口须结合索引和事件日志判断。
-
-具体字段、修订规则、读取示例与 AI 提示见 [课堂日志读取契约](Documentation/日志格式.md)。
-
-模型切换或轮换保留 session_id 和 sequence，递增 connection_epoch。Google 计划轮换约九分钟触发；百炼不设置没有官方依据的定时轮换或课堂总时长上限。遇到重连、输入变化或不完整尾部时保留明确标记。恢复能力不代表无限无损连接。百炼停止时发送 `session.finish`，最多等待 20 秒的 `session.finished`，再结束日志；超时、断连或旧连接未完整收尾时标记 `tail_incomplete`。Google Transcribe 发送 `audioStreamEnd`，最多等待十秒并以正式 `inputTranscription` 确认末段输出；这不是逐采样点收货回执。切换同译／同传会重建云会话，旧连接继续接收尾部结果；切换期间可能存在缺口。
-
-## 构建与验证
-
-需要 Apple Swift 工具链和 macOS SDK。默认使用 `xcode-select -p` 指定的工具链；可通过 `LIVECAPTION_DEVELOPER_DIR` 选择开发目录。构建缓存位于 `.build-selected-toolchain`；更换工具链时用 `LIVECAPTION_BUILD_PATH` 指向另一缓存目录，避免混用编译器产物。
+## 快速开始
 
 ```bash
-bash scripts/build.sh
-bash scripts/check.sh
-bash scripts/verify-live.sh
+git clone https://github.com/baobao700508/Caption-and-translation.git
+cd Caption-and-translation
+cp -n Resources/Configuration.example.json "$HOME/Desktop/LiveCaption配置.json"
 ```
 
-构建脚本自动在工程内建立 Meson/Ninja 工具环境，从固定 SHA256 的 freedesktop WebRTC APM 2.1 源码构建静态库，Abseil 版本及归档校验由其 wrap 文件固定。应用运行时不依赖 Python、Meson、Homebrew 或外部降噪服务。第三方许可包含在 app 的 Resources 中。
+编辑桌面的配置文件，填写对应服务的凭据。已有配置可继续使用，也可在设置中通过“选择配置”指定另一个 JSON 文件。
 
-`check.sh` 在本机运行协议、修订、跨连接日志、实际文件追读、音频环形缓冲和真正的 WebRTC NS 检查，不需要云凭据。它使用普通 Swift 可执行测试入口，便于仅安装 Command Line Tools 的机器运行。
+首次从源码构建时，先准备音频静态库，供发布前的核心检查使用：
 
-`verify-live.sh translate` 使用公开 LibriSpeech 真人录音，真实调用当前配置的翻译线路；`verify-live.sh translate "$HOME/Desktop/LiveCaption配置.json" speech` 验证译音，`verify-live.sh transcribe` 验证独立转写。这是核心线路检查，不含原生字幕 UI。
+```bash
+python3 scripts/build_audio.py
+```
 
-`bash scripts/verify-human-app.sh subtitles` 验证实际 AppSession 发送队列、百炼返回、原生字幕、重排和运行中日志；将 `subtitles` 换为 `speech` 或 `transcribe` 可检查另外两个模式。测试使用 76.145 秒真人朗读，七个连续语句按顺序各输入一次，不循环、不合成、不播放，也不打开麦克风。结果与实际上传 WAV 保存在 `TestResults/human-*/`；可运行 `python3 scripts/analyze-human-reflow.py <result.json>` 分别核对输入字节、字幕保真、首字时间与后台整理耗时。首次准备数据需要网络与 ffmpeg，语音请求会使用所选配置的云 API。
+需要本机字幕整理时，再准备 SaT：
 
-公开样本来自 [OpenSLR LibriSpeech test-clean](https://www.openslr.org/12/)，CC BY 4.0；文件、原始逐句文本、时间范围和 PCM 哈希保存在 `TestResults/fixtures/librispeech/provenance.json`。干净的单人朗读可复现输入完整性与字幕处理，不能代替真实课堂、远场噪声和多人同时说话的验收。字幕分段结果见 [字幕智能分段与真人录音验证](Documentation/字幕智能分段与真人录音验证.md)。当前断线恢复与 Google 收尾结果见 [断线恢复与收尾验证](Documentation/断线恢复与收尾验证.md)。
+```bash
+bash scripts/setup-sat.sh
+```
 
-应用另提供开发诊断参数 `--verify-audio <fixture.wav> <result.json>`，仅采集由验证器启动的 afplay 进程，经真实 Core Audio tap、WebRTC NS 和格式转换统计 PCM 指标，不调用云模型，也不保存环境或麦克风录音。`--verify-classroom <fixture.wav> <result.json> <transcribe|translate>` 使用独立测试日志目录，验证真实播放器采集、Google 返回、字幕状态、收起后追读，以及 Translate 的播放／静音切换；测试不改写桌面配置或生产日志。真实课堂质量、扬声器 AEC、全屏覆盖、多设备切换及长时间运行的验证状态见 `Documentation/验证状态.md`。
+结束正在进行的记录并退出旧版应用后，构建并打开：
 
-## 百炼 API 配置
+```bash
+bash scripts/build.sh --activate --archive-legacy
+```
+
+构建入口会下载并校验固定版本的 WebRTC SDK，必要时构建独立降噪库，再执行核心检查、签名检查和原生界面检查。通过后发布到 `dist/LiveCaption.app`，桌面 `LiveCaption.app` 指向该唯一正式包。已有发布记录时，重新正式发布前须递增 `Resources/Info.plist` 中的整数 build；开发构建可使用下文的隔离输出目录。
+
+启动应用不会自动录音。首次使用时，按 macOS 提示授权系统音频录制；启用麦克风时另需麦克风权限。
+
+## 配置与凭据
+
+完整可填写样例见 [Resources/Configuration.example.json](Resources/Configuration.example.json)。百炼翻译的基本配置为：
 
 ```json
 {
   "pipeline": "translate",
   "translateProvider": "bailian",
-  "bailianAPIKey": "YOUR_BAILIAN_KEY",
-  "bailianWorkspaceID": "YOUR_WORKSPACE_ID",
   "bailianRegion": "singapore",
+  "bailianWorkspaceID": "YOUR_WORKSPACE_ID",
+  "bailianAPIKey": "YOUR_BAILIAN_KEY",
   "bailianTranslateModel": "qwen3.8-livetranslate-flash-realtime",
+  "bailianTurnDetection": "server_vad",
+  "bailianTransport": "websocket",
   "translationMode": "subtitles",
   "subtitleLayout": "bilingual",
-  "targetLanguage": "zh-Hans"
+  "targetLanguage": "zh-Hans",
+  "systemAudioEnabled": true,
+  "microphoneEnabled": false,
+  "logDirectory": "~/Documents/LiveCaption Logs"
 }
 ```
 
-源语种由模型自动识别，`zh-Hans`／`zh-Hant` 目标统一映射到接口的 `zh`；这不保证简繁体输出偏好。翻译线路同时返回原文识别；原文与译文按各自消息 ID 保存，不假设二者逐句一一对应。`response.text.done` 仍可能对应中断响应，只有 `response.done.status == completed` 才标为定稿。
+- `bailianRegion` 支持 `singapore` 和 `beijing`。API Key、工作空间及地区需要匹配；`bailianWorkspaceID` 是工作空间 ID，不是显示名称。
+- Google 原文转写使用独立的 `apiKey`，模型由 `transcribeModel` 指定。切到本机识别时设置 `transcribeProvider: "whisperKit"`，不需要云端转写密钥。
+- `translationMode: "subtitles"` 表示书面同译，`"speech"` 表示带译音同传。书面同译只请求文字，不生成付费译音后再丢弃。
+- 同传请求默认音色 `Tina`，显式关闭声音克隆；服务回显必须确认检测方式、输出模态和音色设置，否则停止发送。
+- `bailianTurnDetection: "auto"` 在两种翻译模式中均解析为 `server_vad`。显式指定 `speaker_detection` 的兼容路径仍保留，不能将声音变化视作服务端切换检测器的证据。
+- `bailianTransport` 支持 PCM16 WebSocket 和原生 Opus WebRTC。旧配置未提供该字段时保留 WebRTC；选择传输方式不改变文字／语音输出模态。
+- Google 语音翻译的兼容线路可通过 `translateProvider: "google"` 选择；其纯文字翻译配置会在连接前被拒绝。
 
-输入继续使用现有 16 kHz 单声道 PCM16，译音按 24 kHz PCM16 播放。应用默认使用已回显确认的 `server_vad`（`bailianTurnDetection` 可显式改为 `speaker_detection`，其 threshold 固定 0.5）；应用内降噪继续在发送前执行。当前适配器专门处理 Qwen 3.8 协议，不把 Qwen 3.5 的 snapshot 当成 delta。旧 JSON 未指定 `translateProvider` 时保留 Google 线路；桌面迁移配置显式指定百炼。
+普通配置文件修改后可使用“重读配置”，或在下一次开始记录时加载。凭据分别保存在配置文件和对应 Keychain 项中，不写入课堂日志或 UserDefaults。模型、设备和设置不能替代 macOS 的实际采集授权。
 
-官方依据：[客户端事件](https://help.aliyun.com/zh/model-studio/live-translator-client-events)、[服务端事件](https://help.aliyun.com/zh/model-studio/live-translator-server-events)、[模型与接入地区](https://help.aliyun.com/zh/model-studio/qwen3-5-livetranslate-flash-realtime)。
+## 字幕与 SaT 整理
 
-## 界面检查
+字幕和原始日志立即更新，识别、翻译及译音播放不等待 SaT。
 
-`--verify-interface <result.json> --verification-exit` 在原生应用内验证浮窗、迷你条、设置、隐藏恢复、鼠标穿透回退和模式状态，不启动采集或调用云 API。真实鼠标点击和截图检查单独记录，见 [交互设计与验收](Documentation/交互设计与验收.md)。
+- **开启整理**：临时文字先放在连续尾段中；原文转写等待定稿原文，双语等待明确关联的原文和译文都定稿，再由 SaT 判断段落。双语仅在服务明确关联的语段之间换段，不按字数比例或到达顺序硬配。
+- **关闭整理**：立即取消排队或执行中的本机整理，迟到结果不再应用。屏幕直接保留服务器语段，一段包含多句话时也不按句号重新切分。
+- **自动保存**：开关、SaT 模型、本地 Python 路径、换段阈值及最短段落自动保存，没有单独的保存按钮。快速修改会合并写入；较早的保存不能重新开启已关闭的整理。
+- **正文保真**：模型只选择切点，显示内容从原文字片截取，不能改写、翻译、删减或重复正文。完整性校验不等于语义分段质量保证；失败保留完整文字。
+- **修订处理**：后续普通文字追加到尾部；供应商修改已定稿文字时，保留不受影响的前缀，重新处理受影响范围。回看前文时冻结当前显示，点击“回到最新”后恢复跟随。
+
+```json
+"captionReflow": {
+  "enabled": false,
+  "engine": "sat",
+  "sat": {
+    "model": "sat-3l",
+    "pythonExecutable": "~/Library/Application Support/LiveCaption/SaT/runtime/bin/python3",
+    "paragraphThreshold": 0.5,
+    "minimumCharacters": 120,
+    "timeoutSeconds": 120
+  }
+}
+```
+
+`engine` 兼容旧配置读取，当前始终使用 `sat`。阈值越高，倾向于切出更少的段落。SaT 模型概率、边界选择、推理耗时、参数和取消行为记录在分段审计日志中。字幕正文不会发送到在线整理服务。
+
+## 浮窗、音源与播放
+
+字幕浮窗、迷你条和菜单栏均可打开同一个设置窗口。可选择原文、译文或双语显示；鼠标穿透时保留可交互控制条，重启后恢复非穿透。收起、隐藏和回看字幕均不会结束记录。
+
+电脑声音可采集全部正在播放的应用，或限定到指定应用；浏览器标签页不作为独立应用。可加入麦克风，并选择麦克风与译音输出设备。系统采集排除本应用的译音进程；扬声器经空气进入麦克风的回授仍与设备、摆位有关。
+
+- 麦克风启用 Apple Voice Processing，失败时显式降级为 WebRTC NS；同一路不叠加两套降噪。
+- 系统声音使用内嵌 WebRTC Audio Processing 的 Low NS，可在应用内切到原音旁路。
+- 实时回调只进行有界复制和环形缓冲操作；重采样、降噪、混音、网络及日志在回调外执行。
+- 前端输出为 16 kHz 单声道 PCM16、100 ms 音频包；发送批次、排队时长及丢弃样本有界并记入日志。
+
+译音使用 `AVAudioUnitTimePitch` 保留音调调速。默认积压超过 1.5 秒进入追赶，降到 0.75 秒退出；目标速度按 `1 + (待播秒数 - 0.75) / 20` 计算，最高 1.5 倍并平滑升降。速度只作用于已经收到的播放副本，原始译音及到达时间记录保持不变。待播量含本机渲染管线，不是物理扬声器的精确延迟。缓冲安全上限默认 120 秒，超过后报错并保留原音，不以丢音冒充追赶。`playbackCatchUp` 可配置关闭或调整参数。
+
+## 日志、录音与恢复
+
+```text
+所选日志目录/
+├── latest.json
+└── YYYY-MM-DD/<session_id>/
+    ├── session.json
+    ├── events.jsonl
+    ├── transcript.md
+    ├── live.md
+    ├── reflow-decisions.jsonl
+    ├── caption-layout.json
+    └── audio/
+        ├── uploaded.wav
+        ├── translated.wav
+        ├── system-before-ns.wav
+        ├── microphone-input.wav
+        ├── upload-index.jsonl
+        └── recording.json
+```
+
+文件按实际模式和已启用能力生成。`events.jsonl` 追加记录原始事件及修订；`transcript.md` 是整场可读正文，`live.md` 是最近十分钟快照，不删除历史。`caption-layout.json` 是派生排版，不能代替原始日志。详情见[日志契约](Documentation/日志格式.md)。
+
+上传轨保存客户端成功提交的 PCM；WebRTC 另记录送入编码器的有效输入，收到的译音独立保存。客户端发送完成不等于服务端逐样本收货确认。设置中的“录音回听”可打开当前或历史会话的真实录音；旧会话缺失的轨道不能补回。
+
+一场记录保留同一 `session_id`；连接切换递增 `connection_epoch`。旧连接的迟到文字保留原日志归属，不覆盖当前画面；旧译音不进入新播放队列。断线恢复只发送恢复切点之后的新音频，不补传过期排队声音；缺口单独记账。Google 保留既有轮换策略，百炼没有客户端九分钟主动轮换或课堂总时长上限。
+
+正常停止先结束采集并排空发送，再按供应商协议结束输入和接收尾部。协议完成与译音排空分开记录；超时、断线及未确认尾段如实保留。日志写入异常会停止采集并提示错误。崩溃恢复拒绝修改仍有活动写入进程的会话，保全残缺事件行，不把未确认结果改写成完成。
+
+## 源码结构
+
+```text
+Sources/
+├── LiveCaptionApp/
+│   ├── LiveCaptionApp.swift   # 应用入口与菜单
+│   ├── Session/              # 会话状态、运行协调及回听
+│   ├── Configuration/        # Keychain 与设置写入
+│   ├── Audio/                # 设备、系统采集、前处理与播放
+│   ├── Presentation/         # 浮窗、迷你条、滚动与共享控件
+│   ├── Preferences/          # 完整设置及 SaT 控件
+│   └── Verification/         # 原生界面和文件输入验证器
+├── LiveCaptionCore/
+│   ├── Configuration/        # 配置模型、兼容读取与校验
+│   ├── Providers/            # 供应商协议与连接生命周期
+│   ├── Networking/           # 可替换传输及 WebSocket 实现
+│   ├── Captions/             # 原译文关联、SaT 协调及段落投影
+│   ├── Audio/                # 音频队列、时间轴与播放追赶
+│   ├── Logging/              # 会话日志、录音归档与恢复
+│   └── SaTLocalRuntime.swift # 串行本机 worker 与资源定位
+├── AudioBridge/              # C 环形缓冲与 C++ 降噪桥接
+├── WebRTCBridge/             # 原生 WebRTC 音频设备与传输桥接
+└── AoqBridge/                # 可选传输实验使用的 SDK 桥接
+```
+
+`AppSession` 的方法按职责分组在同一文件内的扩展中，保留原有 `private` 访问范围与属性初始化顺序。UI 不拥有网络或采集生命周期；供应商连接与传输分别通过既有接口测试。详细说明见[架构](Documentation/架构.md)。
+
+## 开发与验证
+
+完成音频依赖准备后，核心检查不需要云凭据：
+
+```bash
+bash scripts/check.sh
+python3 -m unittest discover -s Tests -p '*Tests.py'
+```
+
+实际本机 SaT 推理检查可显式启用：
+
+```bash
+LIVECAPTION_SAT_TEST_PYTHON="$HOME/Library/Application Support/LiveCaption/SaT/runtime/bin/python3" bash scripts/check.sh
+```
+
+不替换正式应用的隔离构建：
+
+```bash
+LIVECAPTION_APP_PATH="$PWD/TestResults/dev/LiveCaption.app" bash scripts/build.sh
+```
+
+工具链默认使用 `xcode-select -p`；可通过 `LIVECAPTION_DEVELOPER_DIR` 指定工具链目录，通过 `LIVECAPTION_BUILD_PATH` 指定独立构建缓存。
+
+退出正式应用后，检查原生窗口与状态：
+
+```bash
+bash scripts/verify-interface.sh
+```
+
+使用公开真人录音验证生产 AppSession、发送队列、字幕、日志及返回译音：
+
+```bash
+bash scripts/verify-human-app.sh subtitles
+bash scripts/verify-human-app.sh speech
+bash scripts/verify-human-app.sh transcribe
+```
+
+这些命令会调用配置中的云服务，结果和实际上传音频保存在本机 `TestResults/`。公开样本来自 [OpenSLR LibriSpeech](https://www.openslr.org/12/)，按 CC BY 4.0 保留参考文本、来源和 PCM 哈希；干净单人朗读不代替真实课堂、远场噪声或多人验收。文件输入、实际硬件采集、物理播放、文字到达和音频到达属于不同证据范围，不能混称完成了端到端延迟验证。
+
+`Experiments/RealtimeTransports/` 及 `LiveCaptionVerify` 包含额外传输研究入口，部分需要未随仓库发布的 AOQ SDK；不自动用于正常录音。正常 App、核心检查和原生文件验证不依赖 AOQ 实验 SDK。
+
+## 基线与发布
+
+重构前基线：`baseline/pre-refactor-20261022`，提交 `2d0f6fe`。可在独立分支查看基线：
+
+```bash
+git switch -c inspect-baseline baseline/pre-refactor-20261022
+```
+
+安装包含 SwiftParser／SwiftSyntax 的 Xcode 工具链后，可对照重构的源码语法：
+
+```bash
+python3 scripts/verify-source-refactor.py baseline/pre-refactor-20261022
+```
+
+该检查比较所有 Swift 声明的 token、会话属性初始化顺序、桥接源码和既有测试；只允许文件整理及会话方法分组，不会把函数体、常量或条件变化当作等价改动。
+
+版本只在 `Resources/Info.plist` 定义。正式发布串行执行检查、构建、签名和同一二进制的原生界面验证；检查失败、源码在验证中变化或仍有应用实例运行时拒绝覆盖。旧包保存在本机 `Releases/Archive/`，实际版本、SHA-256 和证据路径见 `Releases/current.json`。详见[版本管理与发布](Documentation/版本管理与发布.md)。
+
+本机完整迁移保留录音、测试资料、依赖、缓存和历史包；旧开发路径仅作为指向正式目录的兼容链接，不维护第二份源码。公开仓库排除凭据、本机配置、录音、课堂日志、模型、依赖和构建产物。第三方许可随应用打包，位于 `Resources/`。当前为本机 ad-hoc 签名开发包；外部分发所需的签名、公证及目标系统验收独立处理。
+
+[文档索引](Documentation/README.md)区分当前工程说明与历史调研记录。历史报告描述其对应版本与样本，不作为当前功能列表、默认配置或服务承诺。

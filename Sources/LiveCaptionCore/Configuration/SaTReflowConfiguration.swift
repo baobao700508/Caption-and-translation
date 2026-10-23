@@ -16,4 +16,3 @@ public struct SaTReflowConfiguration: Codable, Equatable, Sendable {
         }
     }
 }
-

@@ -77,7 +77,10 @@
 
 ```
 Caption and translation/
-├── Sources/          # 原生应用、字幕领域逻辑与音频桥接
+├── Sources/
+│   ├── LiveCaptionApp/  # Session、Configuration、Audio、Presentation、Preferences、Verification
+│   ├── LiveCaptionCore/ # Configuration、Providers、Networking、Captions、Audio、Logging
+│   └── *Bridge/        # C/C++ 与 Objective-C 音频桥接
 ├── Tests/            # 可执行核心检查与测量脚本检查
 ├── Resources/        # 应用元信息、配置样例与许可证
 ├── scripts/          # 依赖准备、构建、发布与验证入口

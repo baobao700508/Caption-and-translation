@@ -1,6 +1,6 @@
 import Foundation
 
-/// Old engine fields are ignored when decoding; SaT is the only supported route.
+/// Disabling SaT projects the original provider-linked segments without merging or splitting.
 @MainActor public final class CaptionReflowCoordinator {
     public typealias Complete = @Sendable (CaptionReflowInput,CaptionReflowConfiguration) async throws -> String
     public var onChange:(([CaptionParagraph],String)->Void)?
