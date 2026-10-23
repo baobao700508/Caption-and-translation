@@ -17,7 +17,7 @@ let package = Package(
         .target(name:"AoqBridge",publicHeadersPath:"include",cSettings:[.unsafeFlags(["-F"+projectRoot+"/Vendor/aoq","-fobjc-arc"])],linkerSettings:[.unsafeFlags(["-F"+projectRoot+"/Vendor/aoq","-framework","AoqClientSdk","-Xlinker","-rpath","-Xlinker","@executable_path/../Frameworks","-Xlinker","-rpath","-Xlinker",projectRoot+"/Vendor/aoq","-Xlinker","-rpath","-Xlinker",projectRoot+"/Vendor/aoq/AoqClientSdk.framework/Versions/A/Frameworks"])]),
         .target(name: "LiveCaptionCore",dependencies:["WebRTCBridge", .product(name:"WhisperKit",package:"WhisperKit")]),
         .target(name:"WebRTCBridge",publicHeadersPath:"include",cxxSettings:[.unsafeFlags(["-F"+rtcFrameworks,"-fobjc-arc"])],linkerSettings:[.unsafeFlags(["-F"+rtcFrameworks,"-framework","WebRTC","-Xlinker","-rpath","-Xlinker","@executable_path/../Frameworks","-Xlinker","-rpath","-Xlinker",rtcFrameworks])]),
-        .target(name:"LiveCaptionTransportExperiments",dependencies:["LiveCaptionCore","AoqBridge"],path:"Experiments/RealtimeTransports",exclude:["README.md","probe_tcp.py","probe_webrtc.py"]),
+        .target(name:"LiveCaptionTransportExperiments",dependencies:["LiveCaptionCore","AoqBridge"],path:"Experiments/RealtimeTransports",exclude:["README.md"]),
         .executableTarget(name: "LiveCaptionApp", dependencies: ["LiveCaptionCore", "AudioBridge"]),
         .executableTarget(name: "LiveCaptionChecks", dependencies: ["LiveCaptionCore", "AudioBridge"], path: "Tests/LiveCaptionCoreTests"),
         .executableTarget(name:"LiveCaptionModelSetup",dependencies:["LiveCaptionCore"]),

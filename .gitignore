@@ -50,3 +50,8 @@ Experiments/*
 !Experiments/RealtimeTransports/
 Experiments/RealtimeTransports/.*
 Experiments/RealtimeTransports/__pycache__/
+
+# 本机专用诊断、历史测试脚本与私有验证资料
+LocalOnly/
+scripts/*.local.*
+Tests/*.local.*

@@ -57,11 +57,11 @@ actor Evidence {
     static func run() async {
         do {
             let args = CommandLine.arguments
-            guard args.count >= 2 else { print("用法：LiveCaptionVerify <16kHz-mono.wav> [transcribe|translate|all] [配置.json] [subtitles|speech]"); exit(2) }
-            var config = try Configuration.load(from: args.count > 3 ? URL(fileURLWithPath:args[3]) : Configuration.desktopURL)
+            guard args.count >= 4 else { print("用法：LiveCaptionVerify <16kHz-mono.wav> <transcribe|translate|all> <测试配置.json> [subtitles|speech]"); exit(2) }
+            var config = try Configuration.load(from: URL(fileURLWithPath:args[3]))
             if args.count > 4, let mode = OutputMode(rawValue:args[4]) { config.translationMode = mode }
             let pcm = try readPCM(URL(fileURLWithPath:args[1]))
-            let selected = args.count > 2 ? args[2] : "all"
+            let selected = args[2]
             guard selected == "all" || Pipeline(rawValue:selected) != nil else { throw CaptionError.message("未知线路参数") }
             let pipelines = Pipeline.allCases.filter { selected == "all" || $0.rawValue == selected }
             guard !pipelines.isEmpty else { throw CaptionError.message("未选择验证线路") }

@@ -1,16 +1,23 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-mode="${1:-subtitles}"
-config="${2:-$HOME/Desktop/LiveCaption配置.json}"
-if [[ $# -gt 0 ]]; then shift; fi
-if [[ $# -gt 0 ]]; then shift; fi
+if [[ $# -lt 2 ]]; then
+  printf '%s\n' '用法：verify-human-app.sh <subtitles|speech|transcribe> <测试配置.json> [验证参数...]' >&2
+  exit 2
+fi
+mode="$1"
+config="$2"
+shift 2
+if [[ ! -f "$config" ]]; then printf '%s\n' '测试配置文件不存在。' >&2; exit 2; fi
 case "$mode" in subtitles|speech|transcribe) ;; *) echo '模式须为 subtitles、speech 或 transcribe'; exit 2;; esac
 python3 scripts/prepare-human-fixture.py
-if [[ "${LIVECAPTION_SKIP_BUILD:-0}" != 1 ]]; then bash scripts/build.sh; fi
 test_root="$(mktemp -d /private/tmp/LiveCaption-Human.XXXXXX)"
 trap 'rm -f "$test_root/config.json"' EXIT
-ditto dist/LiveCaption.app "$test_root/HumanCheck.app"
+if [[ "${LIVECAPTION_SKIP_BUILD:-0}" == 1 ]]; then
+  ditto "${LIVECAPTION_APP_PATH:-$PWD/dist/LiveCaption.app}" "$test_root/HumanCheck.app"
+else
+  LIVECAPTION_APP_PATH="$test_root/HumanCheck.app" bash scripts/build.sh
+fi
 /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier local.livecaption.human-check' "$test_root/HumanCheck.app/Contents/Info.plist"
 codesign --force --sign - "$test_root/HumanCheck.app"
 cp "$config" "$test_root/config.json"

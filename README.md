@@ -249,12 +249,12 @@ bash scripts/verify-interface.sh
 使用公开真人录音验证生产 AppSession、发送队列、字幕、日志及返回译音：
 
 ```bash
-bash scripts/verify-human-app.sh subtitles
-bash scripts/verify-human-app.sh speech
-bash scripts/verify-human-app.sh transcribe
+bash scripts/verify-human-app.sh subtitles /absolute/path/test-config.json
+bash scripts/verify-human-app.sh speech /absolute/path/test-config.json
+bash scripts/verify-human-app.sh transcribe /absolute/path/test-config.json
 ```
 
-这些命令会调用配置中的云服务，结果和实际上传音频保存在本机 `TestResults/`。公开样本来自 [OpenSLR LibriSpeech](https://www.openslr.org/12/)，按 CC BY 4.0 保留参考文本、来源和 PCM 哈希；干净单人朗读不代替真实课堂、远场噪声或多人验收。文件输入、实际硬件采集、物理播放、文字到达和音频到达属于不同证据范围，不能混称完成了端到端延迟验证。
+这些命令必须显式传入测试配置，才会调用其中的云服务；不默认读取桌面配置。验证包在临时目录构建，不更新桌面正式版。结果和实际上传音频保存在本机 `TestResults/`。公开样本来自 [OpenSLR LibriSpeech](https://www.openslr.org/12/)，按 CC BY 4.0 保留参考文本、来源和 PCM 哈希；干净单人朗读不代替真实课堂、远场噪声或多人验收。文件输入、实际硬件采集、物理播放、文字到达和音频到达属于不同证据范围，不能混称完成了端到端延迟验证。
 
 `Experiments/RealtimeTransports/` 及 `LiveCaptionVerify` 包含额外传输研究入口，部分需要未随仓库发布的 AOQ SDK；不自动用于正常录音。正常 App、核心检查和原生文件验证不依赖 AOQ 实验 SDK。
 
@@ -276,6 +276,6 @@ python3 scripts/verify-source-refactor.py baseline/pre-refactor-20261022
 
 版本只在 `Resources/Info.plist` 定义。正式发布串行执行检查、构建、签名和同一二进制的原生界面验证；检查失败、源码在验证中变化或仍有应用实例运行时拒绝覆盖。旧包保存在本机 `Releases/Archive/`，实际版本、SHA-256 和证据路径见 `Releases/current.json`。详见[版本管理与发布](Documentation/版本管理与发布.md)。
 
-本机完整迁移保留录音、测试资料、依赖、缓存和历史包；旧开发路径仅作为指向正式目录的兼容链接，不维护第二份源码。公开仓库排除凭据、本机配置、录音、会话日志、模型、依赖和构建产物。第三方许可随应用打包，位于 `Resources/`。当前为本机 ad-hoc 签名开发包；外部分发所需的签名、公证及目标系统验收独立处理。
+本机完整迁移保留录音、测试资料、依赖、缓存和历史包；旧开发路径仅作为指向正式目录的兼容链接，不维护第二份源码。公开仓库排除凭据、本机配置、录音、会话日志、模型、依赖和构建产物。通用离线回归测试保留在 `Tests/`；机器专用诊断与一次性测试放入被 Git 忽略的 `LocalOnly/`，不作为公开验证入口。第三方许可随应用打包，位于 `Resources/`。当前为本机 ad-hoc 签名开发包；外部分发所需的签名、公证及目标系统验收独立处理。
 
 [本地模型与首次使用验证](Documentation/本地模型与首次使用验证.md)说明准备流程的实际验收边界。[文档索引](Documentation/README.md)区分当前工程说明与历史调研记录。历史报告描述其对应版本与样本，不作为当前功能列表、默认配置或服务承诺。
