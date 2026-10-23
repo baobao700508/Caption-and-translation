@@ -85,10 +85,13 @@ struct DemoParagraph: Identifiable {
     var statusColor: Color { scene == .reconnecting ? .orange : (running && scene != .empty ? .teal : .gray) }
     var actionTitle: String { running && scene != .empty ? "结束记录" : "开始记录" }
     var actionSymbol: String { running && scene != .empty ? "stop.fill" : "play.fill" }
-    func toggleRecording() {
-        if scene == .empty { scene = .lecture; running = true }
-        else { running.toggle() }
-        if !running { stream = false }
+    func startRecording() {
+        if scene == .empty { scene = .lecture }
+        running = true
+    }
+    func stopRecording() {
+        running = false
+        stream = false
     }
     func changeFont(_ delta: Double) { fontSize = min(32, max(16, fontSize + delta)) }
     func setScene(_ value: SampleScene) {
@@ -140,6 +143,7 @@ private struct CaptionIcon: View {
 private struct CaptionMenuItems: View {
     @ObservedObject var session: DemoSession
     var onClose: (() -> Void)?
+    let recordingAction: () -> Void
     var body: some View {
         Picker("字幕内容", selection: $session.layout) {
             ForEach(TextLayout.allCases) { Text($0.rawValue).tag($0) }
@@ -150,7 +154,7 @@ private struct CaptionMenuItems: View {
         Toggle("只看最新一段", isOn: $session.latestOnly)
         Button("复制当前译文") { session.copyTranslation() }.disabled(session.paragraphs.isEmpty)
         Divider()
-        Button(session.actionTitle) { session.toggleRecording() }
+        Button(session.actionTitle, action: recordingAction)
         if let onClose { Divider(); Button("关闭此预览", action: onClose) }
     }
 }
@@ -158,8 +162,9 @@ private struct CaptionMenuItems: View {
 private struct CaptionMore: View {
     @ObservedObject var session: DemoSession
     var onClose: (() -> Void)?
+    let recordingAction: () -> Void
     var body: some View {
-        Menu { CaptionMenuItems(session: session, onClose: onClose) } label: {
+        Menu { CaptionMenuItems(session: session, onClose: onClose, recordingAction: recordingAction) } label: {
             Image(systemName: "ellipsis").font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.white.opacity(0.82))
                 .frame(width: 24, height: 24).contentShape(Rectangle())
@@ -243,6 +248,15 @@ struct CaptionProposal: View {
     @ObservedObject var session: DemoSession
     var onClose: (() -> Void)?
     @State private var hovering = false
+    @State private var showingStopConfirmation = false
+    // 确认状态归属发起操作的浮窗，避免共享演示状态引出多个弹窗。
+    private func requestRecordingAction() {
+        if session.running && session.scene != .empty {
+            showingStopConfirmation = true
+        } else {
+            session.startRecording()
+        }
+    }
     private var reveal: Bool { hovering || session.showCTools || session.scene == .empty }
     var body: some View {
         Group {
@@ -255,8 +269,8 @@ struct CaptionProposal: View {
                         Text(session.layout.rawValue).font(.system(size: 10)).foregroundStyle(CaptionStyle.secondary)
                         Spacer()
                         Text("12:36").font(.system(size: 10).monospacedDigit()).foregroundStyle(CaptionStyle.secondary)
-                        CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol) { session.toggleRecording() }
-                        CaptionMore(session: session, onClose: onClose)
+                        CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol, action: requestRecordingAction)
+                        CaptionMore(session: session, onClose: onClose, recordingAction: requestRecordingAction)
                     }.padding(.leading, 16).padding(.trailing, 6).frame(height: 28)
                     Rectangle().fill(.white.opacity(0.07)).frame(height: 0.5)
                     ReadingBody(session: session)
@@ -268,8 +282,8 @@ struct CaptionProposal: View {
                     VStack(spacing: 6) {
                         Capsule().fill(.white.opacity(0.16)).frame(width: 12, height: 2).padding(.top, 12)
                         Spacer(minLength: 4)
-                        CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol) { session.toggleRecording() }
-                        CaptionMore(session: session, onClose: onClose)
+                        CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol, action: requestRecordingAction)
+                        CaptionMore(session: session, onClose: onClose, recordingAction: requestRecordingAction)
                         Spacer(minLength: 4)
                         Circle().fill(session.statusColor).frame(width: 5, height: 5).padding(.bottom, 14)
                     }.frame(width: 32).background(.white.opacity(0.025))
@@ -281,8 +295,8 @@ struct CaptionProposal: View {
                     }
                     .overlay(alignment: .trailing) {
                         VStack(spacing: 5) {
-                            CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol) { session.toggleRecording() }
-                            CaptionMore(session: session, onClose: onClose)
+                            CaptionIcon(title: session.actionTitle, symbol: session.actionSymbol, action: requestRecordingAction)
+                            CaptionMore(session: session, onClose: onClose, recordingAction: requestRecordingAction)
                         }.padding(3).background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 9))
                             .padding(.trailing, 6).opacity(reveal ? 1 : 0)
                             .allowsHitTesting(reveal).accessibilityHidden(!reveal)
@@ -295,7 +309,13 @@ struct CaptionProposal: View {
         .background(CaptionStyle.background, in: RoundedRectangle(cornerRadius: 11))
         .overlay(RoundedRectangle(cornerRadius: 11).stroke(CaptionStyle.border, lineWidth: 0.7))
         .clipShape(RoundedRectangle(cornerRadius: 11))
-        .contextMenu { CaptionMenuItems(session: session, onClose: onClose) }
+        .contextMenu { CaptionMenuItems(session: session, onClose: onClose, recordingAction: requestRecordingAction) }
+        .alert("结束本次记录？", isPresented: $showingStopConfirmation) {
+            Button("继续记录", role: .cancel) {}
+            Button("结束记录", role: .destructive) { session.stopRecording() }
+        } message: {
+            Text("结束后将停止收音、翻译和字幕更新，已有字幕保留。")
+        }
         .overlay(alignment: .bottomLeading) {
             if !session.feedback.isEmpty {
                 Text(session.feedback).font(.system(size: 11)).padding(.horizontal, 9).padding(.vertical, 5)
