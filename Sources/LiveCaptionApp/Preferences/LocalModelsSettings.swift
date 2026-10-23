@@ -25,7 +25,7 @@ struct LocalModelsSettings:View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Whisper · 本机原文转写") {
-                LabeledContent("模型",value:session.config.localWhisper.model)
+                LabeledContent("模型",value:session.config.localWhisper.model == LocalWhisperConfiguration().model ? "Whisper Turbo（large-v3）":session.config.localWhisper.model)
                 Text("默认 Turbo 模型安装后约 1.5 GB，建议预留 3 GB；不需要 Python。下载包含分词器，完成后验证本机 GPU 识别。")
                     .font(.caption).foregroundStyle(.secondary)
                 ModelDownloadControls(state:models.whisper,id:"whisper",install:{ models.installWhisper(session.config.localWhisper) },cancel:models.cancelWhisper)

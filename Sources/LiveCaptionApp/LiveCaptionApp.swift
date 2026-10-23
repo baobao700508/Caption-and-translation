@@ -19,7 +19,11 @@ import LiveCaptionCore
         session.menuBar = MenuBarController(session:session)
         session.overlay = OverlayController(session: session); session.overlay?.show()
         let args = CommandLine.arguments
-        if let index = args.firstIndex(of:"--verify-caption-reflow"),args.count>index+3 {
+        if args.contains("--verify-onboarding") {
+            // Interactive verification uses LIVECAPTION_MODEL_HOME for isolation.
+            session.verificationInProgress=true;session.config=Configuration();session.configurationReady=false
+            session.showSettings(.session)
+        } else if let index = args.firstIndex(of:"--verify-caption-reflow"),args.count>index+3 {
             session.overlay?.hide()
             Task {
                 await CaptionReflowSmoke.run(output:args[index+1],configurationPath:args[index+2],fixturePath:args[index+3],session:session)

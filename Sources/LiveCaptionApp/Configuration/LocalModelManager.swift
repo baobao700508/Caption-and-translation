@@ -71,7 +71,7 @@ struct ModelDownloadState {
             whisper.active=false;whisper.fraction=nil;whisperTask=nil
         }
     }
-    func cancelSaT() { satTask?.cancel();satWorker?.cancel() }
-    func cancelWhisper() { whisperTask?.cancel() }
+    func cancelSaT() { if sat.active { sat.message="正在取消安装…" };satTask?.cancel();satWorker?.cancel() }
+    func cancelWhisper() { if whisper.active { whisper.message="正在取消准备…" };whisperTask?.cancel() }
     func cancelAll() { cancelSaT();cancelWhisper() }
 }

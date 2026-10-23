@@ -1,5 +1,7 @@
 # LiveCaption · Caption and translation
 
+[下载 Apple Silicon 测试版 App](https://github.com/baobao700508/Caption-and-translation/releases/latest) · [源码构建](#开发者从源码构建)
+
 macOS 原生实时字幕、原文转写与同声传译工具。以电脑播放声音为主要音源，也可加入麦克风；字幕显示在浮窗中，收起为迷你条或隐藏到菜单栏后，课堂记录继续。
 
 | 使用模式 | 处理线路 | 输出 |
@@ -264,4 +266,4 @@ python3 scripts/verify-source-refactor.py baseline/pre-refactor-20261022
 
 本机完整迁移保留录音、测试资料、依赖、缓存和历史包；旧开发路径仅作为指向正式目录的兼容链接，不维护第二份源码。公开仓库排除凭据、本机配置、录音、课堂日志、模型、依赖和构建产物。第三方许可随应用打包，位于 `Resources/`。当前为本机 ad-hoc 签名开发包；外部分发所需的签名、公证及目标系统验收独立处理。
 
-[文档索引](Documentation/README.md)区分当前工程说明与历史调研记录。历史报告描述其对应版本与样本，不作为当前功能列表、默认配置或服务承诺。
+[本地模型与首次使用验证](Documentation/本地模型与首次使用验证.md)说明准备流程的实际验收边界。[文档索引](Documentation/README.md)区分当前工程说明与历史调研记录。历史报告描述其对应版本与样本，不作为当前功能列表、默认配置或服务承诺。
