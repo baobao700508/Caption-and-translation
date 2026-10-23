@@ -38,7 +38,7 @@
     "sat": {
       "model": "sat-3l",
       "pythonExecutable": "~/Library/Application Support/LiveCaption/SaT/runtime/bin/python3",
-      "paragraphThreshold": 0.5,
+      "paragraphThreshold": 0.2,
       "minimumCharacters": 120,
       "timeoutSeconds": 120
     }

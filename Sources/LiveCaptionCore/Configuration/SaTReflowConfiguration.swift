@@ -3,7 +3,7 @@ import Foundation
 public struct SaTReflowConfiguration: Codable, Equatable, Sendable {
     public var model = "sat-3l"
     public var pythonExecutable = "~/Library/Application Support/LiveCaption/SaT/runtime/bin/python3"
-    public var paragraphThreshold = 0.5
+    public var paragraphThreshold = 0.2
     public var minimumCharacters = 120
     public var timeoutSeconds = 120.0
     public init() {}

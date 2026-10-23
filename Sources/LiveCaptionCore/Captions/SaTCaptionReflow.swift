@@ -56,11 +56,6 @@ public enum SaTCaptionReflow {
             var values=[0];for atom in atoms { values.append(values.last!+atom.count) };return values
         }
         let sourceSizes=cumulative(input.source),translationSizes=cumulative(input.translation)
-        let readingLimit=max(600,c.minimumCharacters*4)
-        func endsSentence(_ atom:String)->Bool {
-            let trailing=CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn:"\"'”’）)]}"))
-            return atom.trimmingCharacters(in:trailing).last.map { ".!?。！？".contains($0) } ?? false
-        }
         for point in candidates {
             guard point.count == 2 else { throw CaptionError.message("SaT 原译关联边界格式无效") }
             let se=point[0],te=point[1]
@@ -74,11 +69,10 @@ public enum SaTCaptionReflow {
             if groups.count>=63 { reason="maximum_groups_reached" }
             else if length<c.minimumCharacters || remaining<c.minimumCharacters { reason="keep_coherent_paragraph" }
             else if probability>=c.paragraphThreshold { reason="selected" }
-            else if length>=readingLimit && (!mono || endsSentence(input.source.isEmpty ? input.translation[te-1]:input.source[se-1])) { reason="reading_length_limit" }
             else { reason="below_paragraph_threshold" }
             decisions.append(["source_end":se,"translation_end":te,"source_probability":sp,"translation_probability":tp,
-                              "characters":length,"remaining_characters":remaining,"reading_limit_characters":readingLimit,"decision":reason])
-            if (reason == "selected" || reason == "reading_length_limit") && groups.count<63 { groups.append(point);s=se;t=te }
+                              "characters":length,"remaining_characters":remaining,"decision":reason])
+            if reason == "selected" && groups.count<63 { groups.append(point);s=se;t=te }
         }
         groups.append([input.source.count,input.translation.count])
         try await emit("caption.sat.selection",["decisions":decisions,"groups":groups,

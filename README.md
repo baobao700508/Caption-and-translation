@@ -127,14 +127,14 @@ bash scripts/build.sh --activate --archive-legacy
   "sat": {
     "model": "sat-3l",
     "pythonExecutable": "~/Library/Application Support/LiveCaption/SaT/runtime/bin/python3",
-    "paragraphThreshold": 0.5,
+    "paragraphThreshold": 0.2,
     "minimumCharacters": 120,
     "timeoutSeconds": 120
   }
 }
 ```
 
-`engine` 兼容旧配置读取，当前始终使用 `sat`。阈值越高，倾向于切出更少的段落。SaT 模型概率、边界选择、推理耗时、参数和取消行为记录在分段审计日志中。字幕正文不会发送到在线整理服务。
+`engine` 兼容旧配置读取，当前始终使用 `sat`。默认阈值为 0.20，建议低于 0.50；超过 0.50 时会警告可能持续不分段。段落再长也不会绕过阈值按字数强切。SaT 模型概率、边界选择、推理耗时、参数和取消行为记录在分段审计日志中。字幕正文不会发送到在线整理服务。
 
 ## AI 友好记录
 

@@ -46,7 +46,7 @@ extension PipelineChecks {
         }()))
         XCTAssertEqual(restored.captionReflow.sat,c);try restored.captionReflow.validate()
     }
-    func testSaTLongLowConfidenceKeepsReadableLinkedParagraphs() async throws {
+    func testSaTLongTextNeverBypassesThreshold() async throws {
         let source=String(repeating:"A complete explanation with an explicit translation link. ",count:12)
         let translation=String(repeating:"这是一段有明确原译文关联的完整说明。",count:10)
         let first=CaptionReflowInput(source:source,translation:translation)
@@ -59,7 +59,15 @@ extension PipelineChecks {
                 "source":source.indices.map { ["end":$0+1,"probability":0.2] as [String:Any] },
                 "translation":target.indices.map { ["end":$0+1,"probability":0.1] as [String:Any] }])
         }
-        let c=SaTReflowConfiguration()
+        var c=SaTReflowConfiguration()
+        XCTAssertEqual(c.paragraphThreshold,0.2)
+        c.paragraphThreshold=0.5
+        let uncut=try await SaTCaptionReflow.complete(input,configuration:c,infer:infer)
+        let longRows=try input.render(uncut,id:"long-below-threshold")
+        XCTAssertEqual(longRows.count,1)
+        XCTAssertEqual(longRows.map(\.source).joined(),source+source)
+        XCTAssertEqual(longRows.map(\.translation).joined(),translation+translation)
+        c.paragraphThreshold=0.2
         let response=try await SaTCaptionReflow.complete(input,configuration:c,infer:infer)
         let rows=try input.render(response,id:"readable")
         XCTAssertEqual(rows.count,2)

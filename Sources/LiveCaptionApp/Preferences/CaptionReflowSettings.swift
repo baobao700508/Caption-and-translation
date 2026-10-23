@@ -34,6 +34,12 @@ struct CaptionReflowSettings:View {
                     .accessibilityIdentifier("sat-threshold")
                 Text(session.config.captionReflow.sat.paragraphThreshold,format:.number.precision(.fractionLength(2))).monospacedDigit()
             }
+            Text("建议阈值低于 0.50，默认 0.20。阈值越高，越难触发分段；不会因文字过长而强制切分。")
+                .font(.caption).foregroundStyle(.secondary)
+            if session.config.captionReflow.sat.paragraphThreshold > 0.5 {
+                Text("警告：阈值超过 0.50，模型分数可能一直达不到要求，导致字幕持续不分段；后果自负。")
+                    .font(.caption).foregroundStyle(.orange).accessibilityIdentifier("sat-high-threshold-warning")
+            }
             Stepper("最短段落：\(session.config.captionReflow.sat.minimumCharacters) 字符（双语合计）",value:Self.parameterBinding(session:session,\.minimumCharacters),in:20...2000,step:20)
                 .accessibilityIdentifier("sat-minimum-characters")
             Text("临时文字先连续显示，定稿后在本机整理。双语仅在服务明确关联的语段之间换段；段落阈值越高，切得越少。").font(.caption).foregroundStyle(.secondary)

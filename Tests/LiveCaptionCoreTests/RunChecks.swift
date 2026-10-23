@@ -35,7 +35,7 @@ func XCTAssertLessThan<T: Comparable>(_ lhs: T, _ rhs: T, file: StaticString = #
             ("SaT 本地概率、显式双语关联与配置兼容", { try await checks.testSaTLocalSelectionAndExplicitBilingualLinks() }),
             ("SaT 四条路径 draft/final、迟到译文与定稿修订", { try await checks.testSaTAllFourRoutesDraftFinalAndRevision() }),
             ("SaT 过期代次隔离与失败保留全文", { try await checks.testSaTStaleEpochAndFailureRetainAllText() }),
-            ("SaT 长段低概率仍在明确关联边界保持可读，不伪造对齐", { try await checks.testSaTLongLowConfidenceKeepsReadableLinkedParagraphs() }),
+            ("SaT 默认阈值0.20，长段不绕过阈值强切，保留明确原译关联", { try await checks.testSaTLongTextNeverBypassesThreshold() }),
             ("SaT 实际本地模型与 Unicode 保真（显式启用）", { try await checks.testSaTRealLocalRuntimeWhenRequested() }),
             ("译音动态追赶双水位、速度边界、清空及关闭", { try checks.testCatchUpHysteresisBoundsAndReset() }),
             ("十五分钟中文持续多20%仍保持有界、停顿排空且不丢音", { checks.testCatchUpSustainedTranslationSurplusDoesNotGrowUnbounded() }),
