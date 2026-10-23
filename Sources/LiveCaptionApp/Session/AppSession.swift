@@ -5,31 +5,6 @@ import LocalAuthentication
 import AVFoundation
 import LiveCaptionCore
 
-enum KeyStorage {
-    static func load(provider: TranslationProvider = .google) -> String? {
-        load(service:"local.livecaption."+provider.rawValue)
-    }
-    static func load(service:String) -> String? {
-        var result: CFTypeRef?
-        let context = LAContext(); context.interactionNotAllowed = true
-        let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
-            kSecAttrAccount as String: "apiKey", kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecUseAuthenticationContext as String: context]
-        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess, let d = result as? Data else { return nil }
-        return String(data: d, encoding: .utf8)
-    }
-    static func save(_ key: String, provider: TranslationProvider = .google) {
-        save(key,service:"local.livecaption."+provider.rawValue)
-    }
-    static func save(_ key:String, service:String) {
-        let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "apiKey"]
-        let update = [kSecValueData as String: Data(key.utf8)]
-        if SecItemUpdate(q as CFDictionary, update as CFDictionary) == errSecItemNotFound {
-            var value = q; value.merge(update) { _, n in n }; SecItemAdd(value as CFDictionary, nil)
-        }
-    }
-}
-
 @MainActor final class AppSession: ObservableObject {
     static let shared = AppSession()
     @Published var config = Configuration()
@@ -157,6 +132,10 @@ enum KeyStorage {
             Task { @MainActor in await self?.resumeAfterWake() }
         }
     }
+}
+
+// MARK: - 电源状态
+extension AppSession {
     private func prepareForSleep() {
         guard running && !stopping else { return }
         resumeWanted = true; busy = true; status = "休眠暂停"
@@ -185,6 +164,10 @@ enum KeyStorage {
         } catch { errorMessage = redacted(error.localizedDescription); await stop() }
         busy = false
     }
+}
+
+// MARK: - 配置与偏好
+extension AppSession {
     func reloadConfiguration(preservePreferences: Bool = false) async {
         let requestID = UUID(); configurationRequestID = requestID
         let reflowRevisionAtLoad=reflowSettingsRevision
@@ -253,6 +236,10 @@ enum KeyStorage {
         var safe = config; safe.apiKey = ""; safe.bailianAPIKey = ""
         if let data = try? JSONEncoder().encode(safe) { UserDefaults.standard.set(data, forKey: "runtime-settings") }
     }
+}
+
+// MARK: - 录制、采集与发送
+extension AppSession {
     func start(persistSettings: Bool = true) async {
         guard !running && !busy && configurationReady else { return }
         stopRecordingPlayback()
@@ -409,6 +396,10 @@ enum KeyStorage {
             "capture_ended_at":SessionLog.timestamp(Date(timeIntervalSince1970:summary.endedAt)),"replayed":false])
     }
     func waitForFileReplay() async { await fileReplayProducer?.value; await packetTask?.value }
+}
+
+// MARK: - 云连接与服务事件
+extension AppSession {
     private func openConnection(config desired: Configuration, resuming: String?, change: Bool) async throws {
         guard let logger else { return }
         epochCounter += 1; let newEpoch = epochCounter; let id = runID
@@ -505,6 +496,10 @@ enum KeyStorage {
             }
         } catch { await failLog() }
     }
+}
+
+// MARK: - 字幕与 SaT 设置
+extension AppSession {
     func displayTranscript(_ transcript:Transcript, epoch:Int, pipeline:Pipeline) {
         lastCaptionSnapshot=(transcript,epoch,pipeline)
         sourceText = transcript.recentText(track:"source",epoch:epoch)
@@ -588,6 +583,10 @@ enum KeyStorage {
         let revision=applyReflowConfiguration(value,origin:"save_model_parameters")
         try await persistReflowConfiguration(value,revision:revision,url:fileURL ?? configurationURL)
     }
+}
+
+// MARK: - 线路与音源切换
+extension AppSession {
     func changePipeline(_ pipeline: Pipeline) async {
         guard !busy && !stopping && pipeline != config.pipeline else { return }
         let previous = config; let previousEpoch = epoch; config.pipeline = pipeline; savePreferences()
@@ -640,6 +639,10 @@ enum KeyStorage {
         catch { errorMessage = redacted(error.localizedDescription); await stop() }
         busy = false
     }
+}
+
+// MARK: - 连接恢复与健康检查
+extension AppSession {
     private func rotate() async {
         guard running && !busy && !stopping else { return }
         busy = true; status = "轮换连接中"
@@ -702,6 +705,10 @@ enum KeyStorage {
         }
     }
     private func failLog() async { errorMessage = "日志写入失败，采集已停止；请检查目录权限与磁盘空间。"; await stop() }
+}
+
+// MARK: - 收尾与日志入口
+extension AppSession {
     func stop() async {
         guard !stopping else { return }
         stopping = true; busy = true; status = "正在收尾"
