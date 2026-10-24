@@ -73,6 +73,7 @@ import Combine
             let entry = menu.addItem(withTitle:title,action:action,keyEquivalent:""); entry.target = self
         }
         menu.addItem(.separator())
+        let update=menu.addItem(withTitle:"检查更新…",action:#selector(AppUpdater.checkForUpdates(_:)),keyEquivalent:""); update.target=AppUpdater.shared
         if session?.passthrough == true {
             let entry = menu.addItem(withTitle:"关闭鼠标穿透",action:#selector(recoverMouse),keyEquivalent:""); entry.target = self
         }

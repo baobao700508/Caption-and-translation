@@ -6,7 +6,8 @@ let rtcFrameworks=projectRoot+"/Vendor/webrtc/WebRTC.xcframework/macos-x86_64_ar
 let package = Package(
     name: "LiveCaption", platforms: [.macOS("14.2")],
     products: [.executable(name: "LiveCaption", targets: ["LiveCaptionApp"]), .library(name: "LiveCaptionCore", targets: ["LiveCaptionCore"])],
-    dependencies: [.package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.1.1")],
+    dependencies: [.package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.1.1"),
+                   .package(url:"https://github.com/sparkle-project/Sparkle.git",exact:"2.10.0")],
     targets: [
         .target(name: "AudioBridge", publicHeadersPath: "include", cxxSettings: [
             .headerSearchPath("../../Vendor/install/include/webrtc-audio-processing-2"),
@@ -18,7 +19,7 @@ let package = Package(
         .target(name: "LiveCaptionCore",dependencies:["WebRTCBridge", .product(name:"WhisperKit",package:"WhisperKit")]),
         .target(name:"WebRTCBridge",publicHeadersPath:"include",cxxSettings:[.unsafeFlags(["-F"+rtcFrameworks,"-fobjc-arc"])],linkerSettings:[.unsafeFlags(["-F"+rtcFrameworks,"-framework","WebRTC","-Xlinker","-rpath","-Xlinker","@executable_path/../Frameworks","-Xlinker","-rpath","-Xlinker",rtcFrameworks])]),
         .target(name:"LiveCaptionTransportExperiments",dependencies:["LiveCaptionCore","AoqBridge"],path:"Experiments/RealtimeTransports",exclude:["README.md"]),
-        .executableTarget(name: "LiveCaptionApp", dependencies: ["LiveCaptionCore", "AudioBridge"]),
+        .executableTarget(name: "LiveCaptionApp", dependencies: ["LiveCaptionCore", "AudioBridge", .product(name:"Sparkle",package:"Sparkle")]),
         .executableTarget(name: "LiveCaptionChecks", dependencies: ["LiveCaptionCore", "AudioBridge"], path: "Tests/LiveCaptionCoreTests"),
         .executableTarget(name:"LiveCaptionModelSetup",dependencies:["LiveCaptionCore"]),
         .executableTarget(name: "LiveCaptionReflowProbe", dependencies: ["LiveCaptionCore"], path: "Sources/LiveCaptionReflowProbe"),

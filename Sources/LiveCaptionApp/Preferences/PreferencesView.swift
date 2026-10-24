@@ -20,6 +20,7 @@ struct PreferencesView: View {
                     }.buttonStyle(.plain).accessibilityValue(session.settingsSection == section ? "已选中" : "")
                 }
                 Spacer()
+                UpdateControls(session:session,updater:AppUpdater.shared)
                 Text("收起字幕后，记录继续。\n结束记录后，日志仍保留。").font(.caption).foregroundStyle(.secondary).padding(12)
             }.padding(14).frame(width:180).background(.quaternary.opacity(0.4))
             Divider()

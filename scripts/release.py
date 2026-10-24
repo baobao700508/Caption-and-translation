@@ -49,7 +49,7 @@ def running_apps():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--activate", action="store_true", help="发布后从桌面入口打开")
+    parser.add_argument("--activate", action="store_true", help="验证后打开本地构建包；日常安装请使用 GitHub Release")
     parser.add_argument("--archive-legacy", action="store_true", help="归档 dist 内独立旧包")
     args = parser.parse_args()
     os.chdir(ROOT)
@@ -104,9 +104,6 @@ def main():
             if (actual["CFBundleShortVersionString"], actual["CFBundleVersion"]) != (version, build):
                 raise SystemExit("源码与构建版本不一致，未发布。")
             canonical = ROOT / "dist/LiveCaption.app"
-            desktop = Path.home() / "Desktop/LiveCaption.app"
-            if desktop.exists() and not desktop.is_symlink():
-                raise SystemExit("桌面入口不是快捷方式，未替换；需先确认该文件的用途。")
             archive = releases / "Archive" / stamp
             archive.mkdir(parents=True)
             archived = []
@@ -128,26 +125,19 @@ def main():
                         destination = archive / old.name
                         old.rename(destination)
                         archived.append(str(destination))
-            temp_link = desktop.with_name(".LiveCaption-release.app")
-            if temp_link.is_symlink():
-                temp_link.unlink()
-            temp_link.symlink_to(canonical)
-            temp_link.replace(desktop)
             manifest = {"version": version, "build": build, "published_at": stamp,
-                        "app_path": str(canonical), "desktop_path": str(desktop),
+                        "app_path": str(canonical),
                         "binary_sha256": digest(canonical / "Contents/MacOS/LiveCaption"),
                         "source_manifest": str(evidence / "source-manifest.json"),
                         "checks_log": str(evidence / "checks.log"), "interface_result": str(result),
                         "archived_apps": archived,
-                        "included": ["Immediate persisted reflow switch; stale work rejected", "SaT-only local segmentation; automatic parameter saving; provider groups when disabled", "Google stop finalization",
-                                     "WhisperKit", "default Tina voice; cloning disabled", "speaker ID logging", "text-only translation",
-                                     "WebSocket playback catch-up"]}
+                        "included": ["Sparkle signed updates from GitHub Release", "Applications installation independent of the source tree"]}
             (evidence / "release.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
             pending_manifest = releases / ".current.json.tmp"
             pending_manifest.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
             pending_manifest.replace(previous)
             if args.activate:
-                run(["open", str(desktop)])
+                run(["open", str(canonical)])
                 for _ in range(40):
                     if any(line.endswith(str(canonical / "Contents/MacOS/LiveCaption")) for line in running_apps()):
                         break

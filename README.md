@@ -16,7 +16,7 @@ macOS 原生实时字幕、原文转写与同声传译工具。以电脑播放�
 
 使用构建好的 `LiveCaption.app` 不需要安装 Python、Homebrew、Xcode 或命令行工具。最低系统为 macOS 14.2；目前实机验收为 Apple Silicon。当前发布包使用本机 ad-hoc 签名，外部分发的 Developer ID 签名和公证尚未完成，不能将本机启动验收当作全新 Mac 的 Gatekeeper 验收。
 
-1. 下载发布的完整 App，放到“应用程序”后打开。首次打开不会自动录音。
+1. 从上方 GitHub Release 下载 ZIP，双击解压，将 `LiveCaption.app` 复制到“应用程序”后打开。首次打开不会自动录音。
 2. 没有配置时，在设置中点“创建本机配置”；已有配置可点“选择已有配置”。新建配置默认选择无需密钥的 Whisper 本地原文转写，不覆盖已有文件。
 3. 在设置 → **本地模型**，按需点“下载并准备”：Whisper 用于本地原文转写，SaT 用于字幕段落整理。只使用云端服务且关闭整理时，两者均无需下载。
 4. 等待显示实际运行验证通过。下载、依赖安装、文件校验和模型验证分阶段显示；下载模型文件时显示进度。可取消、重试及打开安装日志。SaT 首次准备会一起下载独立 Python 和所需依赖，不修改系统 Python；Whisper 不需要 Python。
@@ -24,6 +24,12 @@ macOS 原生实时字幕、原文转写与同声传译工具。以电脑播放�
 6. 选择音源后开始记录。按 macOS 提示授权系统音频录制；加入麦克风时另需麦克风权限。需要整理时，在“字幕与外观”开启“后台整理字幕”。下载完成本身不会自动开启整理或录音。
 
 下载需要访问 GitHub、PyPI 与 Hugging Face。网络错误不会被标记成安装成功；重试会复用已经校验的模型文件。未完成的 SaT 模型不能成为可用模型；Whisper 需要下载、分词器准备及本机识别验证完成，才允许连接本地识别器。旧版 Whisper 缓存可通过下载按钮复用并补齐验证，无需手工删除或重新下载完整模型。
+
+## 应用更新
+
+结束当前记录后，在设置窗口左下角或菜单栏右键菜单点击“检查更新…”。应用从 GitHub 最新 Release 读取签名更新列表，显示新版说明，按提示下载、安装并重新启动；没有新版或网络失败会显示相应结果。检查更新由用户点击触发，不会在录音中自动重启。
+
+更新仅替换已安装的应用包，配置、服务凭据、本地模型和会话日志独立保留。0.1.27 及以后的版本支持应用内更新；更早版本需要先从 GitHub 下载支持更新的版本并安装。更新包和更新列表使用 Ed25519 签名验证，与首次安装所用的 macOS Developer ID 签名／公证是不同环节。
 
 ## 模型、依赖与空间
 
@@ -72,10 +78,10 @@ swift run --scratch-path .build-selected-toolchain LiveCaptionModelSetup whisper
 结束记录并退出旧版 App 后，正式发布使用：
 
 ```bash
-bash scripts/build.sh --activate --archive-legacy
+bash scripts/build.sh --archive-legacy
 ```
 
-正式构建检查、签名检查和原生界面检查通过后，发布到 `dist/LiveCaption.app`，桌面入口指向该唯一正式包。已有发布记录时须递增 `Resources/Info.plist` 中的整数 build；日常开发使用 `develop.sh` 的隔离输出。正式发布脚本使用 Python 3.12 以上；通过 `develop.sh` 准备的独立解释器也可用于执行发布脚本。
+正式构建检查、签名检查和原生界面检查通过后，生成 `dist/LiveCaption.app`；构建不会替换“应用程序”中的已安装版本或创建桌面链接。已有发布记录时须递增 `Resources/Info.plist` 中的整数 build；日常开发使用 `develop.sh` 的隔离输出。正式发布脚本使用 Python 3.12 以上；通过 `develop.sh` 准备的独立解释器也可用于执行发布脚本。GitHub 更新包与签名更新源的生成见 [版本管理与发布](Documentation/版本管理与发布.md)。
 
 ## 配置与凭据
 

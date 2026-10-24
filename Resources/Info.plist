@@ -15,9 +15,19 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.26</string>
+	<string>0.1.27</string>
 	<key>CFBundleVersion</key>
-	<string>32</string>
+	<string>33</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/baobao700508/Caption-and-translation/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>zMNJYzazVT6VgnFA/NctBTrkYNEafz4cBcEgImUGmUQ=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+	<key>SURequireSignedFeed</key>
+	<true/>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.2</string>
 	<key>LSUIElement</key>

@@ -16,6 +16,7 @@ import LiveCaptionCore
     private var terminationPending=false
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        AppUpdater.shared.start()
         installMenus()
         session.menuBar = MenuBarController(session:session)
         session.overlay = OverlayController(session: session); session.overlay?.show()
@@ -90,6 +91,7 @@ import LiveCaptionCore
         let root = NSMenu()
         let appMenu = NSMenu(title:"LiveCaption")
         appMenu.addItem(withTitle:"关于 LiveCaption",action:#selector(NSApplication.orderFrontStandardAboutPanel(_:)),keyEquivalent:"")
+        let update = appMenu.addItem(withTitle:"检查更新…",action:#selector(AppUpdater.checkForUpdates(_:)),keyEquivalent:""); update.target=AppUpdater.shared
         appMenu.addItem(.separator())
         let preferences = appMenu.addItem(withTitle:"设置…",action:#selector(openSettings),keyEquivalent:","); preferences.target = self
         appMenu.addItem(.separator())
