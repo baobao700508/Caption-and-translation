@@ -4,6 +4,12 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>LiveCaption</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh-Hans</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>zh-Hans</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>LiveCaption</string>
 	<key>CFBundleIdentifier</key>
@@ -17,7 +23,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.28</string>
 	<key>CFBundleVersion</key>
-	<string>34</string>
+	<string>35</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/baobao700508/Caption-and-translation/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
